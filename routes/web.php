@@ -316,3 +316,14 @@ Route::get('/test-approval-service', function() {
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Payment Schedules Routes
+Route::prefix('payments/schedules')->name('payments.schedules.')->group(function () {
+    Route::get('/', [PaymentController::class, 'indexSchedules'])->name('index');
+    Route::get('/create', [PaymentController::class, 'createSchedule'])->name('create');
+    Route::post('/', [PaymentController::class, 'storeSchedule'])->name('store');
+    Route::get('/{schedule}', [PaymentController::class, 'showSchedule'])->name('show');
+    Route::get('/{schedule}/edit', [PaymentController::class, 'editSchedule'])->name('edit');
+    Route::put('/{schedule}', [PaymentController::class, 'updateSchedule'])->name('update');
+    Route::delete('/{schedule}', [PaymentController::class, 'destroySchedule'])->name('destroy');
+});

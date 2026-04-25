@@ -1328,4 +1328,90 @@ class PaymentController extends Controller
             return false;
         }
     }
+
+    public function showSchedule(Request $request, $id)
+{
+    try {
+        $schedule = PaymentSchedule::with('station')->findOrFail($id);
+        
+        if ($this->isApiRequest($request)) {
+            return $this->jsonSuccess($schedule);
+        }
+        
+        return view('payments.schedules.show', compact('schedule'));
+        
+    } catch (\Exception $e) {
+        return $this->handleError($e, $request, 'Failed to fetch schedule');
+    }
+}
+
+public function editSchedule(Request $request, $id)
+{
+    try {
+        $schedule = PaymentSchedule::findOrFail($id);
+        $stations = Station::all();
+        
+        if ($this->isApiRequest($request)) {
+            return $this->jsonSuccess([
+                'schedule' => $schedule,
+                'stations' => $stations
+            ]);
+        }
+        
+        return view('payments.schedules.edit', compact('schedule', 'stations'));
+        
+    } catch (\Exception $e) {
+        return $this->handleError($e, $request, 'Failed to load edit form');
+    }
+}
+
+public function updateSchedule(Request $request, $id)
+{
+    try {
+        $schedule = PaymentSchedule::findOrFail($id);
+        
+        $validated = $request->validate([
+            'station_id' => 'required|exists:stations,station_id',
+            'payment_type' => 'required|in:internet,airtime',
+            'scheduled_date' => 'required|date',
+            'scheduled_amount' => 'required|numeric|min:0',
+            'frequency' => 'required|in:monthly,quarterly,yearly,custom',
+            'is_recurring' => 'boolean',
+            'auto_pay' => 'boolean',
+            'description' => 'nullable|string'
+        ]);
+        
+        $schedule->update($validated);
+        
+        if ($this->isApiRequest($request)) {
+            return $this->jsonSuccess($schedule->load('station'), 'Schedule updated successfully');
+        }
+        
+        return redirect()->route('payments.schedules.index')
+            ->with('success', 'Schedule updated successfully!');
+            
+    } catch (ValidationException $e) {
+        return $this->handleValidationError($e, $request);
+    } catch (\Exception $e) {
+        return $this->handleError($e, $request, 'Error updating schedule');
+    }
+}
+
+    public function destroySchedule(Request $request, $id)
+    {
+        try {
+            $schedule = PaymentSchedule::findOrFail($id);
+            $schedule->delete();
+            
+            if ($this->isApiRequest($request)) {
+                return $this->jsonSuccess(null, 'Schedule deleted successfully');
+            }
+            
+            return redirect()->route('payments.schedules.index')
+                ->with('success', 'Schedule deleted successfully!');
+                
+        } catch (\Exception $e) {
+            return $this->handleError($e, $request, 'Error deleting schedule');
+        }
+    }
 }
