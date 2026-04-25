@@ -1069,8 +1069,9 @@ class PaymentController extends Controller
     private function getRecentMobileNumbers(): Collection
     {
         return AirtimePayment::select('mobile_number')
-            ->distinct()
-            ->orderBy('created_at', 'desc')
+            ->selectRaw('MAX(created_at) as latest_created_at')
+            ->groupBy('mobile_number')
+            ->orderBy('latest_created_at', 'desc')
             ->limit(10)
             ->pluck('mobile_number');
     }
