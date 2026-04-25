@@ -4,539 +4,547 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title mb-0" id="airtime-payment">
-                        <i class="fas fa-gas-pump"></i>
-                        Station Details: {{ $station->name }}
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th width="40%">Station ID:</th>
-                                    <td>
-                                        <span class="badge bg-primary">#{{ $station->station_id }}</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Station Name:</th>
-                                    <td>{{ $station->name }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Location:</th>
-                                    <td>
-                                        <i class="fas fa-map-marker-alt text-danger"></i>
-                                        {{ $station->location }}
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th width="40%">Monthly Loss:</th>
-                                    <td>
-                                        <span class="text-danger fw-bold">
-                                            Ksh {{ number_format($station->monthly_loss, 2) }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Deductions:</th>
-                                    <td>
-                                        <span class="text-info fw-bold">
-                                            Ksh {{ number_format($station->deductions, 2) }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Created Date:</th>
-                                    <td>{{ $station->created_at->format('M d, Y') }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1">{{ $station->name }}</h1>
+            <p class="text-muted mb-0">
+                <i class="fas fa-map-marker-alt me-1"></i> {{ $station->address ?? 'No address provided' }}
+                @if($station->code)
+                <span class="mx-2">|</span>
+                <i class="fas fa-hashtag me-1"></i> Code: {{ $station->code }}
+                @endif
+            </p>
+        </div>
+        <div>
+            <a href="{{ route('payments.internet.create') }}?station_id={{ $station->station_id }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i> Add Payment
+            </a>
+            <a href="{{ route('payments.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back
+            </a>
+        </div>
+    </div>
 
-            <!-- Quick Stats Cards -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card bg-primary text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h4 class="mb-0">{{ $station->employees_count ?? 0 }}</h4>
-                                    <small>Total Employees</small>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-users fa-2x"></i>
-                                </div>
-                            </div>
-                            @if($station->employees_count > 0)
-                            <div class="mt-2">
-                                <small>
-                                    Active: {{ $station->employees()->where('status', 'active')->count() }} |
-                                    Inactive: {{ $station->employees()->where('status', 'inactive')->count() }}
-                                </small>
-                            </div>
-                            @endif
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Employees</h6>
+                            <h2 class="mb-0">{{ $stats['total_employees'] ?? 0 }}</h2>
+                            <small>Active: {{ $stats['active_employees'] ?? 0 }}</small>
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-success text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h4 class="mb-0">{{ $station->orders_count ?? 0 }}</h4>
-                                    <small>Total Orders</small>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-shopping-cart fa-2x"></i>
-                                </div>
-                            </div>
-                            @if($station->orders_count > 0)
-                            <div class="mt-2">
-                                <small>
-                                    @php
-                                        $pending = $station->orders()->where('status', 'pending')->count();
-                                        $completed = $station->orders()->where('status', 'completed')->count();
-                                        $cancelled = $station->orders()->where('status', 'cancelled')->count();
-                                    @endphp
-                                    Pending: {{ $pending }} |
-                                    Completed: {{ $completed }} |
-                                    Cancelled: {{ $cancelled }}
-                                </small>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-info text-white">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h4 class="mb-0">Ksh {{ number_format($station->payments_sum_amount ?? 0, 2) }}</h4>
-                                    <small>Total Payments Amount</small>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-credit-card fa-2x"></i>
-                                </div>
-                            </div>
-                            @if($station->payments_count > 0)
-                            <div class="mt-2">
-                                <small>
-                                    Count: {{ $station->payments_count }} |
-                                    Avg: Ksh {{ number_format(($station->payments_sum_amount ?? 0) / max($station->payments_count, 1), 2) }}
-                                </small>
-                            </div>
-                            @endif
-                        </div>
+                        <i class="fas fa-users fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-4">
-            <!-- Action Buttons -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Actions</h5>
-                </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
                 <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ route('stations.edit', $station->station_id) }}" class="btn btn-warning">
-                            <i class="fas fa-edit"></i> Edit Station
-                        </a>
-
-                        <form action="{{ route('stations.destroy', $station->station_id) }}" method="POST" class="d-grid">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-danger"
-                                onclick="return confirm('Are you sure you want to delete this station? This action cannot be undone.')">
-                                <i class="fas fa-trash"></i> Delete Station
-                            </button>
-                        </form>
-
-                        <a href="{{ route('stations.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Back to Stations
-                        </a>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Paid</h6>
+                            <h2 class="mb-0">KES {{ number_format(($stats['total_internet_paid'] ?? 0) + ($stats['total_airtime_paid'] ?? 0), 2) }}</h2>
+                            <small>Internet: {{ number_format($stats['total_internet_paid'] ?? 0, 2) }}</small>
+                        </div>
+                        <i class="fas fa-credit-card fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
-
-            <!-- Recent Activity -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Station Information</h5>
-                </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
                 <div class="card-body">
-                    <div class="mb-3">
-                        <small class="text-muted">Last Updated:</small>
-                        <div>{{ $station->updated_at->format('M d, Y \a\t h:i A') }}</div>
-                    </div>
-                    <div class="mb-3">
-                        <small class="text-muted">Station Status:</small>
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="badge bg-success">Active</span>
+                            <h6 class="card-title mb-0">Pending Payments</h6>
+                            <h2 class="mb-0">KES {{ number_format($stats['pending_payments'] ?? 0, 2) }}</h2>
+                            <small>Due Soon: {{ $stats['due_soon_count'] ?? 0 }}</small>
                         </div>
+                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Recent Activity</h6>
+                            <h2 class="mb-0">{{ $stats['recent_payments_count'] ?? 0 }}</h2>
+                            <small>Last 10 payments</small>
+                        </div>
+                        <i class="fas fa-chart-line fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <ul class="nav nav-tabs card-header-tabs" id="stationTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="employees-tab" data-bs-toggle="tab"
-                                    data-bs-target="#employees" type="button" role="tab">
-                                <i class="fas fa-users"></i> Employees
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="orders-tab" data-bs-toggle="tab"
-                                    data-bs-target="#orders" type="button" role="tab">
-                                <i class="fas fa-shopping-cart"></i> Orders
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="payments-tab" data-bs-toggle="tab"
-                                    data-bs-target="#payments" type="button" role="tab">
-                                <i class="fas fa-credit-card"></i> Payments
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="deductions-tab" data-bs-toggle="tab"
-                                    data-bs-target="#deductions" type="button" role="tab">
-                                <i class="fas fa-money-bill-wave"></i> Deductions
-                                @if($station->employees->sum('deductions_sum_amount') > 0)
-                                    <span class="badge bg-danger ms-1">
-                                        Ksh {{ number_format($station->employees->sum('deductions_sum_amount'), 2) }}
-                                    </span>
-                                @endif
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-                <div class="card-body">
-                    <div class="tab-content" id="stationTabsContent">
-                        <!-- Employees Tab -->
-                        <div class="tab-pane fade show active" id="employees" role="tabpanel">
-                            @if($station->employees->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Employee ID</th>
-                                                <th>Name</th>
-                                                <th>Position</th>
-                                                <th>Salary</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($station->employees as $employee)
-                                            <tr>
-                                                <td>#{{ $employee->employee_id }}</td>
-                                                <td>{{ $employee->full_name }}</td>
-                                                <td>{{ $employee->position ?? 'N/A' }}</td>
-                                                <td>Ksh {{ number_format($employee->salary ?? 0, 2) }}</td>
-                                                <td>
-                                                    <a href="#" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @else
-                                <div class="text-center py-4">
-                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted">No employees assigned to this station.</p>
-                                    <a href="#" class="btn btn-primary">
-                                        <i class="fas fa-plus"></i> Add Employee
-                                    </a>
-                                </div>
-                            @endif
-                        </div>
-
-                        <!-- Orders Tab -->
-                        <div class="tab-pane fade" id="orders" role="tabpanel">
-                            <div class="text-center py-4">
-                                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">Order data will be displayed here.</p>
-                            </div>
-                        </div>
-
-                        <!-- Payments Tab -->
-                        <div class="tab-pane fade" id="payments" role="tabpanel">
-                            <div class="text-center py-4">
-                                <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">Payment data will be displayed here.</p>
-                            </div>
-                        </div>
-
-                        <!-- Deductions Tab -->
-<!-- Deductions Tab -->
-<div class="tab-pane fade" id="deductions" role="tabpanel">
+    <!-- Main Content Tabs -->
     <div class="card">
         <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" id="airtime-payment">
-                    <i class="fas fa-money-bill-wave text-danger me-2"></i>
-                    Employee Deductions
-                </h5>
-                <div>
-                    <span class="badge bg-danger">
-                        Total Deductions: Ksh {{ number_format($station->employees->sum('deductions_sum_amount'), 2) }}
-                    </span>
-                </div>
-            </div>
+            <ul class="nav nav-tabs card-header-tabs" id="stationTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab">
+                        <i class="fas fa-info-circle me-1"></i> Station Info
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="employees-tab" data-bs-toggle="tab" data-bs-target="#employees" type="button" role="tab">
+                        <i class="fas fa-users me-1"></i> Employees 
+                        <span class="badge bg-secondary">{{ $station->employees->count() ?? 0 }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="internet-tab" data-bs-toggle="tab" data-bs-target="#internet" type="button" role="tab">
+                        <i class="fas fa-globe me-1"></i> Internet Payments
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="airtime-tab" data-bs-toggle="tab" data-bs-target="#airtime" type="button" role="tab">
+                        <i class="fas fa-phone me-1"></i> Airtime Payments
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="providers-tab" data-bs-toggle="tab" data-bs-target="#providers" type="button" role="tab">
+                        <i class="fas fa-building me-1"></i> Service Providers
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="schedules-tab" data-bs-toggle="tab" data-bs-target="#schedules" type="button" role="tab">
+                        <i class="fas fa-calendar-alt me-1"></i> Schedules
+                    </button>
+                </li>
+            </ul>
         </div>
         <div class="card-body">
-            @if($station->employees->where('deductions_count', '>', 0)->count() > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Employee</th>
-                                <th>Position</th>
-                                <th>Gross Salary</th>
-                                <th>Total Deductions</th>
-                                <th>Net Salary</th>
-                                <th>No. of Deductions</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($station->employees as $employee)
-                                @if($employee->deductions_count > 0)
+            <div class="tab-content" id="stationTabsContent">
+                
+                <!-- Station Information Tab -->
+                <div class="tab-pane fade show active" id="info" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Contact Information</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th style="width: 150px;">Contact Person</th>
+                                    <td>{{ $station->contact_person ?? 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Phone</th>
+                                    <td>{{ $station->contact_phone ?? 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Email</th>
+                                    <td>{{ $station->contact_email ?? 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td>
+                                        <span class="badge {{ ($station->status ?? 'active') == 'active' ? 'bg-success' : 'bg-danger' }}">
+                                            {{ ucfirst($station->status ?? 'Active') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Station Details</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th style="width: 150px;">Station Code</th>
+                                    <td>{{ $station->code ?? 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Opening Date</th>
+                                    <td>
+                                        {{-- FIXED: Added null check for opening_date --}}
+                                        @if($station->opening_date)
+                                            {{ \Carbon\Carbon::parse($station->opening_date)->format('d/m/Y') }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Region</th>
+                                    <td>{{ $station->region ?? 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Notes</th>
+                                    <td>{{ $station->notes ?? 'No notes' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    @if($station->address)
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h5>Address</h5>
+                            <p>{{ $station->address }}</p>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Employees Tab -->
+                <div class="tab-pane fade" id="employees" role="tabpanel">
+                    @if($station->employees->isEmpty())
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No employees found for this station.
+                        </div>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="employeesTable">
+                                <thead class="table-light">
                                     <tr>
+                                        <th>ID</th>
+                                        <th>Full Name</th>
+                                        <th>Position</th>
+                                        <th>Department</th>
+                                        <th>Phone</th>
+                                        <th>Email</th>
+                                        <th>Hire Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($station->employees as $employee)
+                                    <tr>
+                                        <td>{{ $employee->employee_number ?? $employee->id }}</td>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-sm me-2">
-                                                    <span class="avatar-title bg-primary rounded-circle">
-                                                        {{ strtoupper(substr($employee->first_name, 0, 1) . substr($employee->last_name ?? '', 0, 1)) }}
-                                                    </span>
-                                                </div>
-                                                <div>
-                                                    <strong>{{ $employee->full_name }}</strong><br>
-                                                    <small class="text-muted">#{{ $employee->employee_id }}</small>
-                                                </div>
-                                            </div>
+                                            <strong>{{ $employee->first_name }} {{ $employee->last_name }}</strong>
                                         </td>
                                         <td>{{ $employee->position ?? 'N/A' }}</td>
+                                        <td>{{ $employee->department ?? 'N/A' }}</td>
+                                        <td>{{ $employee->phone ?? 'N/A' }}</td>
+                                        <td>{{ $employee->email ?? 'N/A' }}</td>
                                         <td>
-                                            <strong class="text-success">
-                                                Ksh {{ number_format($employee->salary ?? 0, 2) }}
-                                            </strong>
+                                            {{-- FIXED: Added null check for hire_date --}}
+                                            @if($employee->hire_date)
+                                                {{ \Carbon\Carbon::parse($employee->hire_date)->format('d/m/Y') }}
+                                            @else
+                                                N/A
+                                            @endif
                                         </td>
                                         <td>
-                                            <strong class="text-danger">
-                                                Ksh {{ number_format($employee->deductions_sum_amount ?? 0, 2) }}
-                                            </strong>
-                                        </td>
-                                        <td>
-                                            <strong class="text-primary">
-                                                @php
-                                                    $netSalary = ($employee->salary ?? 0) - ($employee->deductions_sum_amount ?? 0);
-                                                @endphp
-                                                Ksh {{ number_format($netSalary, 2) }}
-                                            </strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-warning">
-                                                {{ $employee->deductions_count ?? 0 }}
+                                            <span class="badge {{ ($employee->status ?? 'active') == 'active' ? 'bg-success' : 'bg-secondary' }}">
+                                                {{ ucfirst($employee->status ?? 'Active') }}
                                             </span>
                                         </td>
                                         <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('employees.show', $employee) }}"
-                                                   class="btn btn-info"
-                                                   title="View Employee">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="#"
-                                                   class="btn btn-warning"
-                                                   title="View Deductions"
-                                                   data-bs-toggle="modal"
-                                                   data-bs-target="#deductionsModal{{ $employee->id }}">
-                                                    <i class="fas fa-list"></i>
-                                                </a>
-                                            </div>
+                                            <button class="btn btn-sm btn-info" onclick="viewEmployee({{ $employee->employee_id }})">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
                                         </td>
                                     </tr>
-
-                                    <!-- Deductions Details Modal -->
-                                    <div class="modal fade" id="deductionsModal{{ $employee->id }}" tabindex="-1">
-                                        <div class="modal-dialog modal-lg">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">
-                                                        Deductions for {{ $employee->full_name }}
-                                                    </h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    @php
-                                                        $employeeDeductions = $employee->deductions()->latest()->get();
-                                                    @endphp
-
-                                                    @if($employeeDeductions->count() > 0)
-                                                        <div class="table-responsive">
-                                                            <table class="table table-sm">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>Date</th>
-                                                                        <th>Description</th>
-                                                                        <th>Type</th>
-                                                                        <th>Amount (KES)</th>
-                                                                        <th>Status</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    @foreach($employeeDeductions as $deduction)
-                                                                        <tr>
-                                                                            <td>{{ $deduction->date->format('M d, Y') }}</td>
-                                                                            <td>{{ $deduction->description }}</td>
-                                                                            <td>
-                                                                                <span class="badge bg-info">
-                                                                                    {{ ucfirst($deduction->type) }}
-                                                                                </span>
-                                                                            </td>
-                                                                            <td class="text-danger">
-                                                                                Ksh {{ number_format($deduction->amount, 2) }}
-                                                                            </td>
-                                                                            <td>
-                                                                                <span class="badge bg-{{ $deduction->status == 'active' ? 'success' : 'warning' }}">
-                                                                                    {{ ucfirst($deduction->status) }}
-                                                                                </span>
-                                                                            </td>
-                                                                        </tr>
-                                                                    @endforeach
-                                                                </tbody>
-                                                                <tfoot>
-                                                                    <tr class="table-active">
-                                                                        <th colspan="3" class="text-end">Total:</th>
-                                                                        <th class="text-danger">
-                                                                            Ksh {{ number_format($employee->deductions_sum_amount, 2) }}
-                                                                        </th>
-                                                                        <th></th>
-                                                                    </tr>
-                                                                </tfoot>
-                                                            </table>
-                                                        </div>
-                                                    @else
-                                                        <div class="text-center py-4">
-                                                            <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
-                                                            <p class="text-muted">No deduction records found for this employee.</p>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-                            @endforeach
-                        </tbody>
-                        <tfoot>
-                            <tr class="table-active">
-                                <th colspan="3" class="text-end">Totals:</th>
-                                <th class="text-danger">
-                                    Ksh {{ number_format($station->employees->sum('deductions_sum_amount'), 2) }}
-                                </th>
-                                <th class="text-primary">
-                                    @php
-                                        $totalGross = $station->employees->sum('salary');
-                                        $totalDeductions = $station->employees->sum('deductions_sum_amount');
-                                        $totalNet = $totalGross - $totalDeductions;
-                                    @endphp
-                                    Ksh {{ number_format($totalNet, 2) }}
-                                </th>
-                                <th>
-                                    {{ $station->employees->sum('deductions_count') }}
-                                </th>
-                                <th></th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            @else
-                <div class="text-center py-5">
-                    <i class="fas fa-money-bill-wave fa-4x text-muted mb-4"></i>
-                    <h5 class="text-muted">No Deductions Found</h5>
-                    <p class="text-muted mb-4">There are no deduction records for employees at this station.</p>
-
-                    <!-- Show all employees even if they have no deductions -->
-                    @if($station->employees->count() > 0)
-                        <div class="mt-4">
-                            <h6>Employees at this Station:</h6>
-                            <div class="table-responsive mt-3">
-                                <table class="table table-sm table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Employee</th>
-                                            <th>Position</th>
-                                            <th>Salary</th>
-                                            <th>Deductions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($station->employees as $employee)
-                                            <tr>
-                                                <td>{{ $employee->full_name }}</td>
-                                                <td>{{ $employee->position ?? 'N/A' }}</td>
-                                                <td>Ksh {{ number_format($employee->salary ?? 0, 2) }}</td>
-                                                <td class="text-success">
-                                                    <i class="fas fa-check-circle text-success"></i>
-                                                    Ksh 0.00
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
                     @endif
                 </div>
-            @endif
-        </div>
-    </div>
-</div>
+
+                <!-- Internet Payments Tab -->
+                <div class="tab-pane fade" id="internet" role="tabpanel">
+                    @if($station->internetPayments->isEmpty())
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No internet payments recorded.
+                        </div>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Provider</th>
+                                        <th>Account Number</th>
+                                        <th>Amount</th>
+                                        <th>Billing Month</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                        <th>Payment Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($station->internetPayments as $payment)
+                                    <tr class="@if($payment->due_date < now() && $payment->status != 'paid') table-danger @endif">
+                                        <td>{{ $payment->provider->name ?? 'N/A' }}</td>
+                                        <td><code>{{ $payment->account_number }}</code></td>
+                                        <td><strong>KES {{ number_format($payment->amount, 2) }}</strong></td>
+                                        <td>
+                                            {{-- FIXED: Added null check for billing_month --}}
+                                            @if($payment->billing_month)
+                                                {{ \Carbon\Carbon::parse($payment->billing_month)->format('M Y') }}
+                                            @else
+                                                N/A
+                                            @endif
+                                        </td>
+                                        <td>
+                                            {{-- FIXED: Added null check for due_date --}}
+                                            @if($payment->due_date)
+                                                {{ \Carbon\Carbon::parse($payment->due_date)->format('d/m/Y') }}
+                                            @else
+                                                N/A
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ $payment->status == 'paid' ? 'success' : ($payment->status == 'pending' ? 'warning' : 'danger') }}">
+                                                {{ ucfirst($payment->status) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{-- FIXED: Added null check for payment_date --}}
+                                            @if($payment->payment_date)
+                                                {{ \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y') }}
+                                            @else
+                                                Not paid
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('payments.internet.show', $payment->id) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <a href="{{ route('payments.internet.index') }}?station_id={{ $station->station_id }}" class="btn btn-primary">
+                                <i class="fas fa-list me-1"></i> View All Internet Payments
+                            </a>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Airtime Payments Tab -->
+                <div class="tab-pane fade" id="airtime" role="tabpanel">
+                    @if($station->airtimePayments->isEmpty())
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No airtime payments recorded.
+                        </div>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Mobile Number</th>
+                                        <th>Network</th>
+                                        <th>Amount</th>
+                                        <th>Top-up Date</th>
+                                        <th>Expected Expiry</th>
+                                        <th>Status</th>
+                                        <th>Transaction ID</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($station->airtimePayments as $payment)
+                                    <tr class="@if($payment->expected_expiry < now() && $payment->status == 'active') table-warning @endif">
+                                        <td><code>{{ $payment->mobile_number }}</code></td>
+                                        <td>{{ $payment->network_provider }}</td>
+                                        <td>KES {{ number_format($payment->amount, 2) }}</td>
+                                        <td>
+                                            {{-- FIXED: Added null check for topup_date --}}
+                                            @if($payment->topup_date)
+                                                {{ \Carbon\Carbon::parse($payment->topup_date)->format('d/m/Y') }}
+                                            @else
+                                                N/A
+                                            @endif
+                                        </td>
+                                        <td>
+                                            {{-- FIXED: Added null check for expected_expiry --}}
+                                            @if($payment->expected_expiry)
+                                                {{ \Carbon\Carbon::parse($payment->expected_expiry)->format('d/m/Y') }}
+                                            @else
+                                                N/A
+                                            @endif
+                                        </tr>
+                                        <td>
+                                            <span class="badge bg-{{ $payment->status == 'active' ? 'success' : 'danger' }}">
+                                                {{ ucfirst($payment->status) }}
+                                            </span>
+                                        </td>
+                                        <td><small>{{ $payment->transaction_id ?? 'N/A' }}</small></td>
+                                        <td>
+                                            <a href="{{ route('payments.airtime.show', $payment->id) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <a href="{{ route('payments.airtime.index') }}?station_id={{ $station->station_id }}" class="btn btn-primary">
+                                <i class="fas fa-list me-1"></i> View All Airtime Payments
+                            </a>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Service Providers Tab -->
+                <div class="tab-pane fade" id="providers" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Internet Service Providers</h5>
+                            @if($station->serviceProviders->isEmpty())
+                                <div class="alert alert-info">No service providers assigned.</div>
+                            @else
+                                <div class="list-group">
+                                    @foreach($station->serviceProviders as $provider)
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">{{ $provider->name }}</h6>
+                                                <small class="text-muted">
+                                                    Contract: {{ $provider->pivot->contract_number ?? 'N/A' }}<br>
+                                                    Period: 
+                                                    {{-- FIXED: Added null checks for dates --}}
+                                                    @if($provider->pivot->start_date)
+                                                        {{ \Carbon\Carbon::parse($provider->pivot->start_date)->format('d/m/Y') }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                    - 
+                                                    @if($provider->pivot->end_date)
+                                                        {{ \Carbon\Carbon::parse($provider->pivot->end_date)->format('d/m/Y') }}
+                                                    @else
+                                                        Ongoing
+                                                    @endif
+                                                </small>
+                                            </div>
+                                            <span class="badge bg-success">{{ $provider->pivot->status ?? 'active' }}</span>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                        <div class="col-md-6">
+                            <h5>General Vendors</h5>
+                            @if($station->vendors->isEmpty())
+                                <div class="alert alert-info">No vendors assigned.</div>
+                            @else
+                                <div class="list-group">
+                                    @foreach($station->vendors as $vendor)
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">{{ $vendor->name }}</h6>
+                                                <small class="text-muted">
+                                                    Service: {{ $vendor->pivot->service_type ?? 'N/A' }}<br>
+                                                    Contract Date: 
+                                                    {{-- FIXED: Added null check --}}
+                                                    @if($vendor->pivot->contract_date)
+                                                        {{ \Carbon\Carbon::parse($vendor->pivot->contract_date)->format('d/m/Y') }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </small>
+                                            </div>
+                                            <span class="badge bg-info">{{ $vendor->pivot->status ?? 'active' }}</span>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
+
+                <!-- Schedules Tab -->
+                <div class="tab-pane fade" id="schedules" role="tabpanel">
+                    @if($station->paymentSchedules->isEmpty())
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No payment schedules configured.
+                        </div>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Payment Type</th>
+                                        <th>Scheduled Amount</th>
+                                        <th>Scheduled Date</th>
+                                        <th>Frequency</th>
+                                        <th>Recurring</th>
+                                        <th>Auto Pay</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($station->paymentSchedules as $schedule)
+                                    <tr>
+                                        <td>
+                                            <span class="badge {{ $schedule->payment_type == 'internet' ? 'bg-primary' : 'bg-success' }}">
+                                                {{ ucfirst($schedule->payment_type) }}
+                                            </span>
+                                        </td>
+                                        <td>KES {{ number_format($schedule->scheduled_amount, 2) }}</td>
+                                        <td>
+                                            {{-- FIXED: Added null check for scheduled_date --}}
+                                            @if($schedule->scheduled_date)
+                                                {{ \Carbon\Carbon::parse($schedule->scheduled_date)->format('d/m/Y') }}
+                                            @else
+                                                N/A
+                                            @endif
+                                        </td>
+                                        <td>{{ ucfirst($schedule->frequency) }}</td>
+                                        <td>{{ $schedule->is_recurring ? 'Yes' : 'No' }}</td>
+                                        <td>{{ $schedule->auto_pay ? 'Yes' : 'No' }}</td>
+                                        <td>
+                                            @php
+                                                $status = 'upcoming';
+                                                if($schedule->scheduled_date) {
+                                                    $scheduleDate = \Carbon\Carbon::parse($schedule->scheduled_date);
+                                                    $status = $scheduleDate->isPast() ? 'overdue' : ($scheduleDate->isToday() ? 'due today' : 'upcoming');
+                                                }
+                                            @endphp
+                                            <span class="badge bg-{{ $status == 'overdue' ? 'danger' : ($status == 'due today' ? 'warning' : 'success') }}">
+                                                {{ ucfirst($status) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" onclick="viewSchedule({{ $schedule->id }})">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+                
             </div>
         </div>
     </div>
 </div>
-@endsection
 
-{{-- @section('scripts') --}}
-{{-- <script>
-    // Initialize Bootstrap tabs
-    var triggerTabList = [].slice.call(document.querySelectorAll('#stationTabs button'))
-    triggerTabList.forEach(function (triggerEl) {
-        var tabTrigger = new bootstrap.Tab(triggerEl)
-        triggerEl.addEventListener('click', function (event) {
-            event.preventDefault()
-            tabTrigger.show()
-        })
-    });
-</script> --}}
-{{-- @endsection --}}
+@push('scripts')
+<script>
+function viewEmployee(employeeId) {
+    // Employee view function
+    alert('View employee: ' + employeeId);
+}
+
+function viewSchedule(scheduleId) {
+    // Schedule view function
+    alert('View schedule: ' + scheduleId);
+}
+</script>
+@endpush
+@endsection
