@@ -607,7 +607,7 @@ class PaymentController extends Controller
                 ]);
             }
 
-            return view('payments.due-soon', compact('upcomingInternet', 'upcomingAirtime'));
+            return view('payments.upcoming', compact('upcomingInternet', 'upcomingAirtime'));
 
         } catch (\Exception $e) {
             return $this->handleError($e, $request, 'Failed to fetch upcoming payments');
