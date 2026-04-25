@@ -213,6 +213,11 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
         'show' => 'employees.show',
     ]);
 
+    Route::get('/employees/{id}', function($id) {
+    $employee = \App\Models\Employee::findOrFail($id);
+    return response()->json(['success' => true, 'data' => $employee]);
+})->name('employee.show');
+
     Route::resource('/losses', LossController::class)->names([
         'index' => 'losses.index',
         'create' => 'losses.create',

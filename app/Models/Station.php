@@ -49,4 +49,54 @@ class Station extends Model
     {
         return $this->hasMany(PaymentSchedule::class, 'station_id');
     }
+    public function serviceProviders(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            InternetProvider::class, 
+            'station_service_providers', 
+            'station_id', 
+            'provider_id'
+        )->withPivot('contract_number', 'start_date', 'end_date', 'status')
+         ->withTimestamps();
+    }
+    public function vendors(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Vendor::class,
+            'station_vendors',
+            'station_id',
+            'vendor_id'
+        )->withPivot('contract_date', 'service_type', 'status')
+         ->withTimestamps();
+    }
+    public function getActiveEmployeesCountAttribute(): int
+    {
+        return $this->employees()->where('status', 'active')->count();
+    }
+    public function getCurrentMonthPaymentsAttribute(): float
+    {
+        $internetTotal = $this->internetPayments()
+            ->whereMonth('payment_date', now()->month)
+            ->whereYear('payment_date', now()->year)
+            ->sum('amount');
+            
+        $airtimeTotal = $this->airtimePayments()
+            ->whereMonth('topup_date', now()->month)
+            ->whereYear('topup_date', now()->year)
+            ->sum('amount');
+            
+        return (float) ($internetTotal + $airtimeTotal);
+    }
+    public function getOverduePaymentsAttribute(): array
+    {
+        $overdueInternet = $this->internetPayments()
+            ->where('due_date', '<', now())
+            ->where('status', '!=', 'paid')
+            ->sum('amount');
+            
+        return [
+            'internet' => (float) $overdueInternet,
+            'total' => (float) $overdueInternet
+        ];
+    }
 }

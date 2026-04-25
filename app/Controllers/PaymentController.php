@@ -225,23 +225,73 @@ class PaymentController extends Controller
         }
     }
 
+    // public function stationPayments(Request $request, $stationId)
+    // {
+    //     try {
+    //         $station = Station::with(['internetPayments.provider', 'airtimePayments'])
+    //             ->findOrFail($stationId);
+
+    //         if ($this->isApiRequest($request)) {
+    //             return $this->jsonSuccess($station);
+    //         }
+
+    //         return view('payments.station', compact('station'));
+
+    //     } catch (\Exception $e) {
+    //         return $this->handleError($e, $request, 'Failed to fetch station payments');
+    //     }
+    // }
+
     public function stationPayments(Request $request, $stationId)
     {
         try {
-            $station = Station::with(['internetPayments.provider', 'airtimePayments'])
-                ->findOrFail($stationId);
-
+            $station = Station::with([
+                'employees' => function($query) {
+                    $query->orderBy('first_name');
+                },
+                'internetPayments' => function($query) {
+                    $query->with('provider')->orderBy('due_date', 'desc')->limit(10);
+                },
+                'airtimePayments' => function($query) {
+                    $query->orderBy('topup_date', 'desc')->limit(10);
+                },
+                'payments' => function($query) {
+                    $query->orderBy('due_date', 'desc')->limit(10);
+                },
+                'paymentSchedules' => function($query) {
+                    $query->where('scheduled_date', '>=', now())->orderBy('scheduled_date');
+                },
+                'serviceProviders' => function($query) {
+                    $query->wherePivot('status', 'active');
+                },
+                'vendors' => function($query) {
+                    $query->wherePivot('status', 'active');
+                }
+            ])->findOrFail($stationId);
+            
+            // Get additional statistics
+            $stats = [
+                'total_employees' => $station->employees->count(),
+                'active_employees' => $station->employees->where('status', 'active')->count(),
+                'total_internet_paid' => $station->internetPayments->where('status', 'paid')->sum('amount'),
+                'total_airtime_paid' => $station->airtimePayments->sum('amount'),
+                'pending_payments' => $station->internetPayments->where('status', 'pending')->sum('amount'),
+                'recent_payments_count' => $station->internetPayments->take(5)->count() + $station->airtimePayments->take(5)->count()
+            ];
+            
             if ($this->isApiRequest($request)) {
-                return $this->jsonSuccess($station);
+                return $this->jsonSuccess([
+                    'station' => $station,
+                    'statistics' => $stats
+                ]);
             }
-
-            return view('payments.station', compact('station'));
-
+            
+            return view('payments.station', compact('station', 'stats'));
+            
         } catch (\Exception $e) {
             return $this->handleError($e, $request, 'Failed to fetch station payments');
         }
     }
-
     public function indexInternetPayments(Request $request)
     {
         try {
