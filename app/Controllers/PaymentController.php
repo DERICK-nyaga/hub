@@ -581,7 +581,7 @@ class PaymentController extends Controller
                 ]);
             }
 
-            $dueSoon = $dueSoonPayments;
+            $dueSoon = $formattedPayments;
             return view('payments.due-soon', compact('dueSoon'));
 
         } catch (\Exception $e) {
