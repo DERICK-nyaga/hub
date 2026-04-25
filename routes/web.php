@@ -20,6 +20,7 @@ use App\Controllers\DeductionTransactionController;
 use App\Controllers\OrderNumberController;
 use App\Controllers\InternetProviderController;
 use App\Controllers\NotificationController;
+use App\Controllers\PendingApprovalController;
 use App\Controllers\EmployeeProfileController;
 
 

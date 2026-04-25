@@ -14,8 +14,9 @@ class LoginController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = 'dashboard';
-     public function showLoginForm()
+    protected $redirectTo = '/dashboard';
+
+    public function showLoginForm()
     {
         return view('auth.login');
     }
@@ -30,7 +31,7 @@ class LoginController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
-            return redirect()->intended('dashboard');
+            return redirect()->intended(route('dashboard'));
         }
 
         return back()->withErrors([
