@@ -1,0 +1,120 @@
+        .dashboard-container {
+            padding: 20px;
+        }
+        .dashboard-header {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card .card-body {
+            padding: 20px;
+        }
+        .stat-card .icon-container {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+        .card-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .card-info { background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%); }
+        .card-warning { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
+        .card-danger { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
+        .card-purple { background: linear-gradient(135deg, #8A2BE2 0%, #4B0082 100%); }
+        .card-teal { background: linear-gradient(135deg, #20B2AA 0%, #008080 100%); }
+        .card-indigo { background: linear-gradient(135deg, #4B0082 0%, #191970 100%); }
+        .card-cyan { background: linear-gradient(135deg, #00CED1 0%, #20B2AA 100%); }
+        .card-orange { background: linear-gradient(135deg, #FF8C00 0%, #FF4500 100%); }
+        .card-gray { background: linear-gradient(135deg, #696969 0%, #2F4F4F 100%); }
+        .card-primary .icon-container { background: rgba(255,255,255,0.2); }
+        .card-success .icon-container { background: rgba(255,255,255,0.2); }
+        .card-info .icon-container { background: rgba(255,255,255,0.2); }
+        .card-warning .icon-container { background: rgba(255,255,255,0.2); }
+        .card-danger .icon-container { background: rgba(255,255,255,0.2); }
+        .card-purple .icon-container { background: rgba(255,255,255,0.2); }
+        .card-teal .icon-container { background: rgba(255,255,255,0.2); }
+        .card-indigo .icon-container { background: rgba(255,255,255,0.2); }
+        .card-cyan .icon-container { background: rgba(255,255,255,0.2); }
+        .card-orange .icon-container { background: rgba(255,255,255,0.2); }
+        .card-gray .icon-container { background: rgba(255,255,255,0.2); }
+        .stat-card h2, .stat-card h6, .stat-card p {
+            color: white;
+        }
+        .stat-card .progress {
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+        }
+        .stat-card .progress-bar {
+            background: white;
+            border-radius: 3px;
+        }
+        .quick-actions-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .quick-actions-card .card-header {
+            background: white;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 10px 10px 0 0;
+            padding: 15px 20px;
+        }
+        .quick-actions-card .btn {
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .quick-actions-card .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .search-box {
+            position: relative;
+            width: 300px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        .search-box input {
+            padding-left: 40px;
+            border-radius: 20px;
+        }
+        .btn-outline-purple {
+            color: #8A2BE2;
+            border-color: #8A2BE2;
+        }
+        .btn-outline-purple:hover {
+            background-color: #8A2BE2;
+            color: white;
+        }
+
+#heading {
+    color: #ff4b2b;
+    font-weight: 800;
+}

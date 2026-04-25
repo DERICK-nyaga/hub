@@ -1,0 +1,472 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12 main-content"> {{-- Changed from col-md-10 to col-md-12 --}}
+            <div class="dashboard-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h2 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Dashboard Overview</h2>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-calendar-alt me-1"></i> Last 30 Days
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                <li><a class="dropdown-item" href="#">Today</a></li>
+                                <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                                <li><a class="dropdown-item" href="#">Last 30 Days</a></li>
+                                <li><a class="dropdown-item" href="#">This Month</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row" id="row">
+                <!-- Total Stations -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Total Stations</h6>
+                                    <h2 class="mb-0">{{ $totalStations }}</h2>
+                                    <p class="card-text text-muted mb-0"><small>{{ $profitableStations }} profitable</small></p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-store text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar"
+                                     style="width: {{ $totalStations > 0 ? ($profitableStations/$totalStations)*100 : 0 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profitable Stations -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Profitable</h6>
+                                    <h2 class="mb-0">{{ $profitableStations }}</h2>
+                                    <p class="card-text text-muted mb-0">
+                                        <small>{{ $totalStations > 0 ? round(($profitableStations/$totalStations)*100) : 0 }}% of total</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-chart-line text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar"
+                                     style="width: {{ $totalStations > 0 ? ($profitableStations/$totalStations)*100 : 0 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loss Making Stations -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-danger">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Loss Making</h6>
+                                    <h2 class="mb-0">{{ $totalStations - $profitableStations }}</h2>
+                                    <p class="card-text text-muted mb-0">
+                                        <small>{{ $stationsWithDeductions }} with deductions</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-chart-line text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar"
+                                     style="width: {{ $totalStations > 0 ? (($totalStations - $profitableStations)/$totalStations)*100 : 0 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Employees -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Total Employees</h6>
+                                    <h2 class="mb-0">{{ $totalEmployees }}</h2>
+                                    <p class="card-text text-muted mb-0">
+                                        <small>Avg {{ $totalStations > 0 ? round($totalEmployees/$totalStations, 1) : 0 }}/station</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-users text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 65%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Payroll -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Monthly Payroll</h6>
+                                    <h2 class="mb-0">KES {{ number_format($totalMonthlyPayroll) }}</h2>
+                                    <p class="card-text text-muted mb-0">
+                                        <small>Avg KES {{ $totalEmployees > 0 ? number_format($totalMonthlyPayroll/$totalEmployees) : 0 }}</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-money-bill-wave text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 82%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Deductions -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-purple">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Total Deductions</h6>
+                                    <h2 class="mb-0">KES {{ number_format($totalDeductions) }}</h2>
+                                    <p class="card-text text-muted mb-0">
+                                        <small>{{ $stationsWithDeductions }} stations</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-hand-holding-usd text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar"
+                                     style="width: {{ $totalStations > 0 ? ($stationsWithDeductions/$totalStations)*100 : 0 }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Payments -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-teal">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Pending Payments</h6>
+                                    <h2 class="mb-0">{{ $upcomingPayments->flatten()->count() }}</h2>
+                                    @php
+                                        $totalPendingAmount = 0;
+                                        foreach($upcomingPayments as $groupPayments) {
+                                            foreach($groupPayments as $payment) {
+                                                $totalPendingAmount += $payment->amount;
+                                            }
+                                        }
+                                    @endphp
+                                    <p class="card-text text-muted mb-0">
+                                        <small>KES {{ number_format($totalPendingAmount) }} total</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-exclamation-circle text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 15%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Average Profit -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-indigo">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Avg. Profit</h6>
+                                    <h2 class="mb-0">KES {{ number_format($avgProfit) }}</h2>
+                                    <p class="card-text text-muted mb-0"><small>Per station</small></p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-coins text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 62%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Average Loss -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-orange">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Avg. Loss</h6>
+                                    <h2 class="mb-0">KES {{ number_format(abs($avgLoss)) }}</h2>
+                                    <p class="card-text text-muted mb-0"><small>Per station</small></p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-exclamation-triangle text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 38%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Station -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-cyan">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Top Station</h6>
+                                    <h2 class="mb-0">{{ $topStation ? 'PP-' . str_pad($topStation->id, 3, '0', STR_PAD_LEFT) : 'N/A' }}</h2>
+                                    <p class="card-text text-muted mb-0">
+                                        <small>KES {{ $topStation ? number_format($topStation->monthly_loss) : 0 }} profit</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-trophy text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 95%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Worst Station -->
+                <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6 mb-4">
+                    <div class="stat-card card-gray">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-subtitle mb-2 text-muted">Worst Station</h6>
+                                    <h2 class="mb-0">{{ $worstStation ? 'PP-' . str_pad($worstStation->id, 3, '0', STR_PAD_LEFT) : 'N/A' }}</h2>
+                                    <p class="card-text text-muted mb-0">
+                                        <small>KES {{ $worstStation ? number_format(abs($worstStation->monthly_loss)) : 0 }} loss</small>
+                                    </p>
+                                </div>
+                                <div class="icon-container">
+                                    <i class="fas fa-exclamation text-white"></i> {{-- Added text-white --}}
+                                </div>
+                            </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 15%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stations Table -->
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5><i class="fas fa-map-marked-alt me-2"></i>All Stations Performance</h5>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="form-control" placeholder="Search stations...">
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Station ID</th>
+                                <th>Location</th>
+                                <th>Employees</th>
+                                <th>Monthly P/L</th>
+                                <th>Deductions</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($stations as $station)
+                            <tr>
+                                <td>PP-{{ str_pad($station->id, 3, '0', STR_PAD_LEFT) }}</td>
+                                <td>
+                                    <small class="text-muted">{{ $station->location }}</small>
+                                </td>
+                                <td>{{ $station->employees_count }}</td>
+                                <td class="{{ $station->monthly_loss >= 0 ? 'text-success' : 'text-danger' }}">
+                                    KES {{ number_format($station->monthly_loss, 2) }}
+                                </td>
+                                <td>KES {{ number_format($station->deductions, 2) }}</td>
+                                <td>
+                                    <span class="badge rounded-pill {{ $station->monthly_loss >= 0 ? 'bg-success' : 'bg-danger' }}">
+                                        {{ $station->monthly_loss >= 0 ? 'Profitable' : 'Loss' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></button>
+                                    <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-end mt-3">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+
+            <!-- Upcoming Payments Section -->
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calendar-check me-2"></i>Upcoming Payments & Bills
+                            </h5>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                        id="paymentsPeriodDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Next 30 Days
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="paymentsPeriodDropdown">
+                                    <li><a class="dropdown-item" href="?days=7">Next 7 Days</a></li>
+                                    <li><a class="dropdown-item" href="?days=14">Next 14 Days</a></li>
+                                    <li><a class="dropdown-item" href="?days=30">Next 30 Days</a></li>
+                                    <li><a class="dropdown-item" href="?days=60">Next 60 Days</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            @foreach($upcomingPayments as $group => $payments)
+                            <div class="mb-4">
+                                <h6 class="text-muted mb-3">{{ $group }}</h6>
+                                <div class="row">
+                                    @foreach($payments as $payment)
+                                    @php
+                                        $borderClass = 'primary';
+                                        if ($payment->due_date->isToday()) {
+                                            $borderClass = 'danger';
+                                        } elseif ($payment->due_date->isPast()) {
+                                            $borderClass = 'warning';
+                                        }
+                                    @endphp
+                                    <div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+                                        <div class="card h-100 border-start-{{ $borderClass }} border-start-3">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between">
+                                                    <div>
+                                                        <span class="badge bg-{{ $borderClass }}">
+                                                            @if($payment->due_date->isToday())
+                                                                Due Today
+                                                            @elseif($payment->due_date->isPast())
+                                                                Overdue
+                                                            @else
+                                                                {{ $payment->due_date->diffForHumans() }}
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge bg-light text-dark">
+                                                            {{ $payment->type ?? 'Payment' }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <h5 class="mt-2">KES {{ number_format($payment->amount, 2) }}</h5>
+                                                <p class="mb-1">
+                                                    <i class="fas fa-store me-1"></i>
+                                                    {{ $payment->station->name ?? 'Unknown Station' }}
+                                                </p>
+                                                @if($payment->recipient)
+                                                <p class="mb-1">
+                                                    <i class="fas fa-user me-1"></i>
+                                                    {{ $payment->recipient }}
+                                                </p>
+                                                @endif
+                                                @if($payment->description)
+                                                <p class="text-muted small mb-2">{{ Str::limit($payment->description, 50) }}</p>
+                                                @endif
+                                                <div class="d-flex justify-content-between mt-3">
+                                                    <small class="text-muted">
+                                                        Due: {{ $payment->due_date->format('M d, Y') }}
+                                                    </small>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-outline-success mark-paid"
+                                                                data-payment-id="{{ $payment->id }}">
+                                                            <i class="fas fa-check"></i> Paid
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endforeach
+
+                            @if($upcomingPayments->isEmpty())
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <h5>No upcoming payments</h5>
+                                <p class="text-muted">All payments are settled for the selected period</p>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Ensure the dashboard uses the full width with proper sidebar margin */
+    .main-content {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+    }
+
+    /* Fix for progress bars in stat cards */
+    .stat-card .progress-bar.bg-white {
+        opacity: 0.8;
+    }
+</style>
+@endsection

@@ -1,0 +1,27 @@
+packages received-attach mus&items total items in them
+                  -attach waybills used
+                  -attach any missing items
+                  -use timestamp of the first item to determine time they came in
+                  -who brought them
+
+packages dispatched
+                  -attach waybills used
+                  -mu file
+                  -total items bulk vs bin
+                  -who they were handed over to
+
+create a todo app that can track my gmail and notify me in case there are unanswered emails
+              -check for past SLA emails
+              -packages not received
+              -damaged{broken,wet,leaking}
+              -unanswered
+
+for any payment if its mpesa then issue an STK PUSH->request for mpesa #
+
+-for internet payments in case there are paybills or till then automatically give an STK PUSH form and fill in mobile #
+
+send reminders either on emails or sms
+
+
+
+Track weekly KPIs and station success rates
