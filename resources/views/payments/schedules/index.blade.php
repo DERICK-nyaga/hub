@@ -43,7 +43,19 @@
                                 <tr>
                                     <td>{{ $schedule->id }}</td>
                                     <td>
-                                        {{ $schedule->station->name ?? 'N/A' }}
+                                        {{-- STATION DETAILS LINK --}}
+                                        <a href="{{ route('stations.show', $schedule->station_id) }}" 
+                                           class="text-decoration-none fw-bold"
+                                           target="_blank"
+                                           data-bs-toggle="tooltip" 
+                                           title="View Station Details">
+                                            <i class="fas fa-building me-1"></i>
+                                            {{ $schedule->station->name ?? 'N/A' }}
+                                        </a>
+                                        @if($schedule->station && $schedule->station->code)
+                                            <br>
+                                            <small class="text-muted">Code: {{ $schedule->station->code }}</small>
+                                        @endif
                                     </td>
                                     <td>
                                         <span class="badge {{ $schedule->payment_type == 'internet' ? 'bg-primary' : 'bg-success' }}">
@@ -83,7 +95,6 @@
                                     <td>
                                         @php
                                             $scheduleDate = \Carbon\Carbon::parse($schedule->scheduled_date);
-                                            $isUpcoming = $scheduleDate->isFuture();
                                             $isToday = $scheduleDate->isToday();
                                             $isPast = $scheduleDate->isPast();
                                         @endphp
@@ -100,9 +111,10 @@
                                             <button class="btn btn-sm btn-info" onclick="viewSchedule({{ $schedule->id }})">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-warning" onclick="editSchedule({{ $schedule->id }})">
+                                            <a href="{{ route('payments.schedules.edit', $schedule->id) }}" 
+                                               class="btn btn-sm btn-warning">
                                                 <i class="fas fa-edit"></i>
-                                            </button>
+                                            </a>
                                             <button class="btn btn-sm btn-danger" onclick="deleteSchedule({{ $schedule->id }})">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -166,7 +178,13 @@ function viewSchedule(scheduleId) {
                         <h6>Schedule Information</h6>
                         <table class="table table-sm">
                             <tr><th>ID:</th><td>${schedule.id}</td></tr>
-                            <tr><th>Station:</th><td>${schedule.station?.name || 'N/A'}</td></tr>
+                            <tr><th>Station:</th> 
+                                <td>
+                                    <a href="/stations/${schedule.station_id}" target="_blank">
+                                        ${schedule.station?.name || 'N/A'}
+                                    </a>
+                                </td>
+                            </tr>
                             <tr><th>Payment Type:</th><td>${schedule.payment_type}</td></tr>
                             <tr><th>Amount:</th><td>KES ${parseFloat(schedule.scheduled_amount).toLocaleString()}</td></tr>
                             <tr><th>Scheduled Date:</th><td>${schedule.scheduled_date}</td></tr>
@@ -178,8 +196,20 @@ function viewSchedule(scheduleId) {
                             <tr><th>Frequency:</th><td>${schedule.frequency}</td></tr>
                             <tr><th>Recurring:</th><td>${schedule.is_recurring ? 'Yes' : 'No'}</td></tr>
                             <tr><th>Auto Pay:</th><td>${schedule.auto_pay ? 'Enabled' : 'Disabled'}</td></tr>
+                            <tr><th>Created:</th><td>${new Date(schedule.created_at).toLocaleString()}</td></tr>
                             <tr><th>Description:</th><td>${schedule.description || 'No description'}</td></tr>
                         </table>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <hr>
+                        <a href="/stations/${schedule.station_id}" class="btn btn-primary btn-sm" target="_blank">
+                            <i class="fas fa-building"></i> View Full Station Details
+                        </a>
+                        <a href="/payments/internet?station_id=${schedule.station_id}" class="btn btn-info btn-sm">
+                            <i class="fas fa-globe"></i> View All Station Payments
+                        </a>
                     </div>
                 </div>
             `;
@@ -221,6 +251,14 @@ function deleteSchedule(scheduleId) {
         });
     }
 }
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+});
 </script>
 @endpush
 @endsection
