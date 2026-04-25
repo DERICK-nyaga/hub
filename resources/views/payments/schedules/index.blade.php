@@ -42,13 +42,28 @@
                             @foreach($schedules as $schedule)
                                 <tr>
                                     <td>{{ $schedule->id }}</td>
-                                    <td>
+                                    <!-- <td>
                                         {{-- STATION DETAILS LINK --}}
                                         <a href="{{ route('stations.show', $schedule->station_id) }}" 
                                            class="text-decoration-none fw-bold"
                                            target="_blank"
                                            data-bs-toggle="tooltip" 
                                            title="View Station Details">
+                                            <i class="fas fa-building me-1"></i>
+                                            {{ $schedule->station->name ?? 'N/A' }}
+                                        </a>
+                                        @if($schedule->station && $schedule->station->code)
+                                            <br>
+                                            <small class="text-muted">Code: {{ $schedule->station->code }}</small>
+                                        @endif
+                                    </td> -->
+
+                                    <td>
+                                        <a href="{{ route('payments.station.details', $schedule->station_id) }}" 
+                                        class="text-decoration-none fw-bold"
+                                        target="_blank"
+                                        data-bs-toggle="tooltip" 
+                                        title="View Station Details">
                                             <i class="fas fa-building me-1"></i>
                                             {{ $schedule->station->name ?? 'N/A' }}
                                         </a>

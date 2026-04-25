@@ -292,6 +292,7 @@ class PaymentController extends Controller
             return $this->handleError($e, $request, 'Failed to fetch station payments');
         }
     }
+
     public function indexInternetPayments(Request $request)
     {
         try {
@@ -1464,4 +1465,82 @@ public function updateSchedule(Request $request, $id)
             return $this->handleError($e, $request, 'Error deleting schedule');
         }
     }
+
+    public function showStationDetails(Request $request, $stationId)
+    {
+        try {
+            $station = Station::with([
+                'employees' => function($query) {
+                    $query->orderBy('first_name');
+                },
+                'internetPayments' => function($query) {
+                    $query->with('provider')->orderBy('due_date', 'desc')->limit(10);
+                },
+                'airtimePayments' => function($query) {
+                    $query->orderBy('topup_date', 'desc')->limit(10);
+                },
+                'payments' => function($query) {
+                    $query->orderBy('due_date', 'desc')->limit(10);
+                },
+                'paymentSchedules' => function($query) {
+                    $query->where('scheduled_date', '>=', now())->orderBy('scheduled_date');
+                },
+                'serviceProviders' => function($query) {
+                    $query->wherePivot('status', 'active');
+                },
+                'vendors' => function($query) {
+                    $query->wherePivot('status', 'active');
+                }
+            ])->findOrFail($stationId);
+            
+            // Get additional statistics
+            $stats = [
+                'total_employees' => $station->employees->count(),
+                'active_employees' => $station->employees->where('status', 'active')->count(),
+                'total_internet_paid' => $station->internetPayments->where('status', 'paid')->sum('amount'),
+                'total_airtime_paid' => $station->airtimePayments->sum('amount'),
+                'pending_payments' => $station->internetPayments->where('status', 'pending')->sum('amount'),
+                'recent_payments_count' => $station->internetPayments->take(5)->count() + $station->airtimePayments->take(5)->count()
+            ];
+            
+            if ($this->isApiRequest($request)) {
+                return $this->jsonSuccess([
+                    'station' => $station,
+                    'statistics' => $stats
+                ]);
+            }
+            
+            // Use a dedicated view for payment station details
+            return view('payments.station-details', compact('station', 'stats'));
+            
+        } catch (\Exception $e) {
+            return $this->handleError($e, $request, 'Failed to fetch station details');
+        }
+    }
+
+    /**
+     * Get employee details via AJAX for the modal
+     */
+    public function getEmployeeDetails(Request $request, $employeeId)
+    {
+        try {
+            $employee = Employee::findOrFail($employeeId);
+            
+            if ($this->isApiRequest($request)) {
+                return $this->jsonSuccess($employee);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => $employee
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found'
+            ], 404);
+        }
+    }
+
 }

@@ -329,4 +329,6 @@ Route::prefix('payments/schedules')->name('payments.schedules.')->group(function
     Route::get('/{schedule}/edit', [PaymentController::class, 'editSchedule'])->name('edit');
     Route::put('/{schedule}', [PaymentController::class, 'updateSchedule'])->name('update');
     Route::delete('/{schedule}', [PaymentController::class, 'destroySchedule'])->name('destroy');
+
+    Route::get('/station/{stationId}', [PaymentController::class, 'showStationDetails'])->name('station.details');
 });
