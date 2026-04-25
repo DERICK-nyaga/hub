@@ -24,7 +24,7 @@ class StationController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'location' => 'required|string|max:255',
-            'mobile_number' => 'nullable|string|max:30|regex:/^[0-9\-\+s\(\)]{10,20}$/',
+            'mobile_number' => 'nullable|string|max:30|regex:/^\+?[0-9\-\s\(\)]{7,20}$/',
             'monthly_loss' => 'required|numeric',
             'deductions' => 'nullable|numeric',
         ]);
@@ -68,7 +68,7 @@ public function show(Station $station)
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'location' => 'required|string|max:255',
-            'mobile_number' => 'nullable|string|max:30|regex:/^[0-9\-\+\s\(\)]{10,20}$/',
+            'mobile_number' => 'nullable|string|max:30|regex:/^\+?[0-9\-\s\(\)]{7,20}$/',
             'monthly_loss' => 'required|numeric',
             'deductions' => 'nullable|numeric',
         ]);
