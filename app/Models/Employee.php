@@ -37,7 +37,7 @@ class Employee extends Model
 
     public function deductions(): HasMany
     {
-        return $this->hasMany(DeductionTransaction::class, 'employee_id', 'employee_id');
+        return $this->hasMany(DeductionTransaction::class, 'employee_id', 'id');
     }
 
     public function getTotalDeductionsAttribute()
