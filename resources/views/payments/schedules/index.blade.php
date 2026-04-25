@@ -43,9 +43,7 @@
                                 <tr>
                                     <td>{{ $schedule->id }}</td>
                                     <td>
-                                        <a href="{{ route('stations.show', $schedule->station_id) }}">
-                                            {{ $schedule->station->name ?? 'N/A' }}
-                                        </a>
+                                        {{ $schedule->station->name ?? 'N/A' }}
                                     </td>
                                     <td>
                                         <span class="badge {{ $schedule->payment_type == 'internet' ? 'bg-primary' : 'bg-success' }}">

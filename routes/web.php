@@ -316,8 +316,6 @@ Route::get('/test-approval-service', function() {
     }
 });
 
-
-
 Route::get('/', function () {
     return view('welcome');
 });
