@@ -22,16 +22,6 @@ return new class extends Migration
             $table->boolean('is_system')->default(false);
             $table->timestamps();
         });
-
-        // database/migrations/xxxx_create_notifications_table.php
-        Schema::create('notifications', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->string('type');
-            $table->morphs('notifiable');
-            $table->json('data');
-            $table->timestamp('read_at')->nullable();
-            $table->timestamps();
-        });
     }
 
     /**
@@ -40,6 +30,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('email_templates');
-        Schema::dropIfExists('notifications');
     }
 };
