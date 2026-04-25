@@ -38,7 +38,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-1">Active Topups</h6>
-                                <h4 class="mb-0">{{ $activeTopups }}</h4>
+                                <h4 class="mb-0">{{ $stats['active_topups'] }}</h4>
                             </div>
                             <i class="fas fa-signal fa-2x opacity-50"></i>
                         </div>
@@ -51,7 +51,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-1">Expiring Soon</h6>
-                                <h4 class="mb-0">{{ $expiringSoon }}</h4>
+                                <h4 class="mb-0">{{ $stats['expiring_soon'] }}</h4>
                             </div>
                             <i class="fas fa-clock fa-2x opacity-50"></i>
                         </div>
@@ -64,7 +64,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="mb-1">This Month</h6>
-                                <h4 class="mb-0">KES {{ number_format($monthlyTotal, 0) }}</h4>
+                                <h4 class="mb-0">KES {{ number_format($stats['monthly_total'], 0) }}</h4>
                             </div>
                             <i class="fas fa-money-bill-wave fa-2x opacity-50"></i>
                         </div>
