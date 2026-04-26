@@ -20,9 +20,9 @@
             <a href="{{ route('payments.internet.create') }}?station_id={{ $station->station_id }}" class="btn btn-primary">
                 <i class="fas fa-plus me-1"></i> Add Payment
             </a>
-            <a href="{{ route('payments.index') }}" class="btn btn-secondary">
+            <!-- <a href="{{ route('payments.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Back to Payments
-            </a>
+            </a> -->
         </div>
     </div>
 

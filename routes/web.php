@@ -143,7 +143,7 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
 
     Route::prefix('payments')->group(function () {
 
-    Route::get('/', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/index', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
         ->name('payments.internet.create');
     Route::post('/internet', [PaymentController::class, 'storeInternetPayment'])
