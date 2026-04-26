@@ -177,7 +177,7 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
             ->name('payments.airtime.index');
                 Route::get('/airtime/{id}/details', [PaymentController::class, 'showAirtimeDetails'])
             ->name('payments.airtime.details');
-        Route::delete('/payments/airtime/{id}', [PaymentController::class, 'destroyAirtimePayment'])->name('payments.airtime.delete');
+        // Route::delete('/payments/airtime/{id}', [PaymentController::class, 'destroyAirtimePayment'])->name('payments.airtime.delete');
         Route::get('/upcoming', [PaymentController::class, 'upcomingPayments'])
             ->name('payments.upcoming');
         Route::get('/overdue', [PaymentController::class, 'overduePayments'])
