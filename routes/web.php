@@ -142,8 +142,14 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
     Route::resource('internet-providers', InternetProviderController::class);
 
     Route::prefix('payments')->group(function () {
-        Route::get('/', [PaymentController::class, 'index'])->name('payments.index');
-        Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
+
+    Route::get('/', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
+        ->name('payments.internet.create');
+    Route::post('/internet', [PaymentController::class, 'storeInternetPayment'])
+        ->name('payments.internet.store');
+
+    Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
             ->name('payments.internet.create');
         Route::post('/internet', [PaymentController::class, 'storeInternetPayment'])
             ->name('payments.internet.store');
