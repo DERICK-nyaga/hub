@@ -330,5 +330,10 @@ Route::prefix('payments/schedules')->name('payments.schedules.')->group(function
     Route::put('/{schedule}', [PaymentController::class, 'updateSchedule'])->name('update');
     Route::delete('/{schedule}', [PaymentController::class, 'destroySchedule'])->name('destroy');
 
-    Route::get('/station/{stationId}', [PaymentController::class, 'showStationDetails'])->name('station.details');
+    // Route::get('/station/{stationId}', [PaymentController::class, 'showStationDetails'])->name('station.details');
+
 });
+
+    Route::get('/payments/station-details/{stationId}', [PaymentController::class, 'showStationDetails'])
+    ->name('payments.station.details');
+    Route::get('/station/{stationId}', [PaymentController::class, 'stationPayments'])->name('station');

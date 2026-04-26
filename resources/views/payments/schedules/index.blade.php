@@ -59,7 +59,7 @@
                                     </td> -->
 
                                     <td>
-                                        <a href="{{ route('station.details', $schedule->station_id) }}" 
+                                        <a href="{{ route('payments.station.details', $schedule->station_id) }}" 
                                         class="text-decoration-none fw-bold"
                                         target="_blank"
                                         data-bs-toggle="tooltip" 
