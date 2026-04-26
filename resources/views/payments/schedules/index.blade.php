@@ -74,23 +74,25 @@
                                     </td> -->
 
                                     <td>
-                                    @if($schedule->station)
-                                        <a href="{{ route('payments.station.details', ['stationId' => $schedule->station->station_id]) }}" 
-                                        class="text-decoration-none fw-bold"
-                                        target="_blank"
-                                        data-bs-toggle="tooltip" 
-                                        title="View Station Details">
-                                            <i class="fas fa-building me-1"></i>
-                                            {{ $schedule->station->name }}
-                                        </a>
-                                        @if($schedule->station->code)
-                                            <br>
-                                            <small class="text-muted">Code: {{ $schedule->station->code }}</small>
-                                        @endif
-                                    @else
-                                        <span class="text-muted">N/A</span>
-                                    @endif
-                                </td>
+    @if($schedule->station)
+        <a href="{{ route('payments.station.details', ['stationId' => $schedule->station->station_id]) }}" 
+           class="text-decoration-underline text-primary"
+           target="_blank"
+           data-bs-toggle="tooltip" 
+           title="View Station Details">
+            <i class="fas fa-building me-1"></i>
+            {{ $schedule->station->name }}
+            <i class="fas fa-external-link-alt ms-1 small"></i>
+        </a>
+        @if($schedule->station->code)
+            <div class="small text-muted mt-1">
+                <i class="fas fa-hashtag fa-xs"></i> {{ $schedule->station->code }}
+            </div>
+        @endif
+    @else
+        <span class="text-muted">N/A</span>
+    @endif
+</td>
                                     <td>
                                         <span class="badge {{ $schedule->payment_type == 'internet' ? 'bg-primary' : 'bg-success' }}">
                                             {{ ucfirst($schedule->payment_type) }}
