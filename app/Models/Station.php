@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Rlations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Station extends Model
 {
@@ -53,7 +53,7 @@ class Station extends Model
     public function serviceProviders(): BelongsToMany
     {
         return $this->belongsToMany(
-            InternetProvider::class, 
+           InternetProvider::class, 
             'station_service_providers', 
             'station_id', 
             'provider_id'
