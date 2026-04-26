@@ -1,5 +1,3 @@
-Here is a complete, deployable HTML document that creates a modern landing page for DNLC Group, maintaining the original layout and links while adding a professional brand identity for hub management.
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,8 +32,8 @@ Here is a complete, deployable HTML document that creates a modern landing page 
         box-shadow: inset 0 0 0 1px rgba(255, 250, 237, 0.18) !important;
       }
       .graphic-panel {
-        background: #1D0002 !important;
-        border-color: #2e1f1c !important;
+        background: #0f0e0c !important;
+        border-color: #2e2c28 !important;
       }
       .text-muted {
         color: #A1A09A !important;
@@ -304,18 +302,53 @@ Here is a complete, deployable HTML document that creates a modern landing page 
     header nav a {
       transition: all 0.2s;
     }
-    .brand-icon-svg {
-      width: 100%;
-      max-width: 380px;
-      transition: transform 0.2s;
-    }
     .inline-arrow {
       width: 10px;
       height: 11px;
     }
-    /* original external link hover effect */
     .hover-lift:hover {
       transform: translateY(-1px);
+    }
+
+    /* Company logo custom styling */
+    .dnlc-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      background: radial-gradient(ellipse at 30% 40%, rgba(229,76,42,0.08), transparent);
+    }
+    .logo-mark {
+      width: 180px;
+      height: auto;
+      margin-bottom: 1rem;
+    }
+    .logo-text-dnlc {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #E54C2A 0%, #C83A1A 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+    .dark .logo-text-dnlc {
+      background: linear-gradient(135deg, #FF6B4A, #E54C2A);
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+    .logo-badge {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      color: #706f6c;
+      margin-top: 0.5rem;
+    }
+    /* abstract hub ornament */
+    .hub-ornament {
+      width: 100%;
+      margin-top: 1rem;
     }
   </style>
 </head>
@@ -333,12 +366,12 @@ Here is a complete, deployable HTML document that creates a modern landing page 
 
   <div class="flex items-center justify-center w-full transition-opacity opacity-100 lg:grow">
     <main class="flex max-w-[335px] w-full flex-col-reverse lg:max-w-4xl lg:flex-row">
-      <!-- LEFT PANEL: main content with DNLC specific messaging (preserved original workflow) -->
+      <!-- LEFT PANEL: main content with DNLC specific messaging (preserved original workflow & links) -->
       <div class="text-[13px] leading-[20px] flex-1 p-6 pb-6 lg:p-20 lg:pb-10 bg-white dark:bg-[#161615] dark:text-[#EDEDEC] shadow-inner-border dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d] rounded-bl-lg rounded-br-lg lg:rounded-tl-lg lg:rounded-br-none">
         <h1 class="mb-1 font-medium text-xl lg:text-2xl">DNLC Group</h1>
         <p class="mb-2 text-[#706f6c] dark:text-[#A1A09A]">Expert hub management for Jumia sellers & logistics.<br /> Scale your marketplace operations seamlessly.</p>
         
-        <!-- Original list structure but rebranded for DNLC / Jumia hub workflow (maintained original links) -->
+        <!-- Original checklist structure but rebranded for DNLC / Jumia hub workflow (links fully preserved) -->
         <ul class="flex flex-col mb-4 lg:mb-6">
           <li class="checklist-item">
             <span class="bullet-circle"><span class="bullet-dot"></span></span>
@@ -363,10 +396,10 @@ Here is a complete, deployable HTML document that creates a modern landing page 
           </li>
         </ul>
         
-        <!-- "deploy now" style CTA with link from original (cloud.laravel.com replaced with demo Jumia partner link but structurally same) -->
+        <!-- "Launch Hub Console" button now links to /stations (as per Route::resource definition) -->
         <ul class="flex gap-3 text-sm leading-normal">
           <li>
-            <a href="https://cloud.laravel.com" target="_blank" class="inline-block dark:bg-[#eeeeec] dark:border-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white dark:hover:border-white hover:bg-black hover:border-black px-5 py-1.5 bg-[#1b1b18] rounded-sm border border-black text-white text-sm leading-normal transition-all">
+            <a href="/stations" class="inline-block dark:bg-[#eeeeec] dark:border-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white dark:hover:border-white hover:bg-black hover:border-black px-5 py-1.5 bg-[#1b1b18] rounded-sm border border-black text-white text-sm leading-normal transition-all">
               Launch Hub Console →
             </a>
           </li>
@@ -381,34 +414,53 @@ Here is a complete, deployable HTML document that creates a modern landing page 
         </p>
       </div>
 
-      <!-- RIGHT PANEL: Custom illustration + graphic (maintains original "13" aesthetic but enhanced with DNLC / Jumia vibes) -->
-      <div class="bg-[#fff2f2] dark:bg-[#1D0002] relative lg:-ml-px -mb-px lg:mb-0 rounded-t-lg lg:rounded-t-none lg:rounded-r-lg aspect-[335/364] lg:aspect-auto w-full lg:w-[438px] shrink-0 overflow-hidden">
-        <!-- Modern Hub Management abstract graphic (inspired by original laravel/13 brand) -->
-        <svg class="w-full text-[#F53003] dark:text-[#F61500] transition-all translate-y-0 opacity-100 max-w-none duration-750" viewBox="0 0 438 104" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-top: 1.5rem;">
-          <path d="M17.2036 -3H0V102.197H49.5189V86.7187H17.2036V-3Z" fill="currentColor" />
-          <path d="M110.256 41.6337C108.061 38.1275 104.945 35.3731 100.905 33.3681C96.8667 31.3647 92.8016 30.3618 88.7131 30.3618C83.4247 30.3618 78.5885 31.3389 74.201 33.2923C69.8111 35.2456 66.0474 37.928 62.9059 41.3333C59.7643 44.7401 57.3198 48.6726 55.5754 53.1293C53.8287 57.589 52.9572 62.274 52.9572 67.1813C52.9572 72.1925 53.8287 76.8995 55.5754 81.3069C57.3191 85.7173 59.7636 89.6241 62.9059 93.0293C66.0474 96.4361 69.8119 99.1155 74.201 101.069C78.5885 103.022 83.4247 103.999 88.7131 103.999C92.8016 103.999 96.8667 102.997 100.905 100.994C104.945 98.9911 108.061 96.2359 110.256 92.7282V102.195H126.563V32.1642H110.256V41.6337ZM108.76 75.7472C107.762 78.4531 106.366 80.8078 104.572 82.8112C102.776 84.8161 100.606 86.4183 98.0637 87.6206C95.5202 88.823 92.7004 89.4238 89.6103 89.4238C86.5178 89.4238 83.7252 88.823 81.2324 87.6206C78.7388 86.4183 76.5949 84.8161 74.7998 82.8112C73.004 80.8078 71.6319 78.4531 70.6856 75.7472C69.7356 73.0421 69.2644 70.1868 69.2644 67.1821C69.2644 64.1758 69.7356 61.3205 70.6856 58.6154C71.6319 55.9102 73.004 53.5571 74.7998 51.5522C76.5949 49.5495 78.738 47.9451 81.2324 46.7427C83.7252 45.5404 86.5178 44.9396 89.6103 44.9396C92.7012 44.9396 95.5202 45.5404 98.0637 46.7427C100.606 47.9451 102.776 49.5487 104.572 51.5522C106.367 53.5571 107.762 55.9102 108.76 58.6154C109.756 61.3205 110.256 64.1758 110.256 67.1821C110.256 70.1868 109.756 73.0421 108.76 75.7472Z" fill="currentColor" />
-          <path d="M242.805 41.6337C240.611 38.1275 237.494 35.3731 233.455 33.3681C229.416 31.3647 225.351 30.3618 221.262 30.3618C215.974 30.3618 211.138 31.3389 206.75 33.2923C202.36 35.2456 198.597 37.928 195.455 41.3333C192.314 44.7401 189.869 48.6726 188.125 53.1293C186.378 57.589 185.507 62.274 185.507 67.1813C185.507 72.1925 186.378 76.8995 188.125 81.3069C189.868 85.7173 192.313 89.6241 195.455 93.0293C198.597 96.4361 202.361 99.1155 206.75 101.069C211.138 103.022 215.974 103.999 221.262 103.999C225.351 103.999 229.416 102.997 233.455 100.994C237.494 98.9911 240.611 96.2359 242.805 92.7282V102.195H259.112V32.1642H242.805V41.6337ZM241.31 75.7472C240.312 78.4531 238.916 80.8078 237.122 82.8112C235.326 84.8161 233.156 86.4183 230.614 87.6206C228.07 88.823 225.251 89.4238 222.16 89.4238C219.068 89.4238 216.275 88.823 213.782 87.6206C211.289 86.4183 209.145 84.8161 207.35 82.8112C205.554 80.8078 204.182 78.4531 203.236 75.7472C202.286 73.0421 201.814 70.1868 201.814 67.1821C201.814 64.1758 202.286 61.3205 203.236 58.6154C204.182 55.9102 205.554 53.5571 207.35 51.5522C209.145 49.5495 211.288 47.9451 213.782 46.7427C216.275 45.5404 219.068 44.9396 222.16 44.9396C225.251 44.9396 228.07 45.5404 230.614 46.7427C233.156 47.9451 235.326 49.5487 237.122 51.5522C238.917 53.5571 240.312 55.9102 241.31 58.6154C242.306 61.3205 242.806 64.1758 242.806 67.1821C242.805 70.1868 242.305 73.0421 241.31 75.7472Z" fill="currentColor" />
-          <path d="M438 -3H421.694V102.197H438V-3Z" fill="currentColor" />
-          <path d="M139.43 102.197H155.735V48.2834H183.712V32.1665H139.43V102.197Z" fill="currentColor" />
-          <path d="M324.49 32.1665L303.995 85.794L283.498 32.1665H266.983L293.748 102.197H314.242L341.006 32.1665H324.49Z" fill="currentColor" />
-          <path d="M376.571 30.3656C356.603 30.3656 340.797 46.8497 340.797 67.1828C340.797 89.6597 356.094 104 378.661 104C391.29 104 399.354 99.1488 409.206 88.5848L398.189 80.0226C398.183 80.031 389.874 90.9895 377.468 90.9895C363.048 90.9895 356.977 79.3111 356.977 73.269H411.075C413.917 50.1328 398.775 30.3656 376.571 30.3656ZM357.02 61.0967C357.145 59.7487 359.023 43.3761 376.442 43.3761C393.861 43.3761 395.978 59.7464 396.099 61.0967H357.02Z" fill="currentColor" />
-        </svg>
-        
-        <!-- stylized DNLC "hub" graphic that resembles original "13" but introduces DNLC brand (with original layer approach) -->
-        <svg class="w-[438px] max-w-none relative -mt-[6rem] -ml-8 lg:ml-0" viewBox="0 0 440 392" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <g class="mix-blend-darken dark:mix-blend-normal transition-all delay-300 opacity-100 text-[#1B1B18] dark:text-black">
-            <mask id="hub-mask" maskUnits="userSpaceOnUse" x="0" y="100" width="360" height="300" fill="black">
-              <rect fill="white" x="0" y="100" width="360" height="300"/>
-              <path d="M220 400C190 400 165 391 145 375C126 359 116 338 116 312H186C186 320 189 327 195 332C201 337 209 340 219 340C229 340 237 337 243 332C249 327 253 320 253 312C253 303 250 296 244 291C238 286 230 283 222 283H185V221H222C229 221 235 218 240 213C245 208 247 202 247 195C247 186 244 180 238 174C233 169 226 166 218 166C211 166 204 168 199 172C194 177 191 182 191 189H124C124 166 133 146 151 131C169 116 192 108 220 108C248 108 270 116 288 130C306 145 315 164 315 188C315 205 310 219 301 230C292 241 280 248 265 252C283 257 297 266 307 278C318 290 323 305 323 323C323 348 313 369 294 385C275 401 250 400 220 400Z"/>
-            </mask>
-            <path d="M220 400C190 400 165 391 145 375C126 359 116 338 116 312H186C186 320 189 327 195 332C201 337 209 340 219 340C229 340 237 337 243 332C249 327 253 320 253 312C253 303 250 296 244 291C238 286 230 283 222 283H185V221H222C229 221 235 218 240 213C245 208 247 202 247 195C247 186 244 180 238 174C233 169 226 166 218 166C211 166 204 168 199 172C194 177 191 182 191 189H124C124 166 133 146 151 131C169 116 192 108 220 108C248 108 270 116 288 130C306 145 315 164 315 188C315 205 310 219 301 230C292 241 280 248 265 252C283 257 297 266 307 278C318 290 323 305 323 323C323 348 313 369 294 385C275 401 250 400 220 400Z" fill="currentColor"/>
-          </g>
-          <g class="transition-all delay-400 opacity-100 motion-safe:starting:-translate-x-[26px] text-[#F3BEC7] dark:text-[#4B0600]">
-            <path d="M246 400C216 400 192 391 173 375C155 359 145 338 145 312H213C213 320 216 327 222 332C228 337 236 340 246 340C256 340 264 337 270 332C276 327 280 320 280 312C280 303 277 296 271 291C265 286 257 283 249 283H213V221H249C256 221 262 218 267 213C272 208 274 202 274 195C274 186 271 180 264 174C259 169 252 166 244 166C237 166 230 168 225 172C220 177 217 182 217 189H151C151 166 160 146 178 131C196 116 219 108 246 108C273 108 295 116 312 130C329 145 338 164 338 188C338 205 333 219 324 230C315 241 303 248 289 252C306 257 320 266 330 278C340 290 345 305 345 323C345 348 335 369 317 385C298 401 274 400 246 400Z" fill="currentColor"/>
-          </g>
-        </svg>
-        
-        <!-- decorative overlay (like original shadow) -->
+      <!-- RIGHT PANEL: Custom company logo + DNLC brand visual (removed Laravel 13, added DNLC identity) -->
+      <div class="bg-[#FAF7F2] dark:bg-[#0F0E0C] relative lg:-ml-px -mb-px lg:mb-0 rounded-t-lg lg:rounded-t-none lg:rounded-r-lg aspect-[335/364] lg:aspect-auto w-full lg:w-[438px] shrink-0 overflow-hidden flex items-center justify-center">
+        <div class="dnlc-logo p-6 text-center">
+          <!-- modern DNLC monogram / company logo (custom vector) -->
+          <svg class="logo-mark" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#E54C2A"/>
+                <stop offset="100%" stop-color="#B82D0C"/>
+              </linearGradient>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FF8C5A" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#E54C2A" stop-opacity="0.3"/>
+              </linearGradient>
+            </defs>
+            <!-- hub / network emblem: abstract D and N linked -->
+            <circle cx="100" cy="80" r="58" stroke="url(#ringGrad)" stroke-width="4" fill="none"/>
+            <circle cx="100" cy="80" r="44" stroke="#E54C2A" stroke-width="2.5" stroke-dasharray="6 6" fill="none" opacity="0.5"/>
+            <path d="M78 80 L66 80 L66 44 L78 44 L78 80Z" fill="url(#logoGrad)"/>
+            <path d="M100 44 L100 108 C108 116 124 116 132 108 C140 100 140 80 132 72 C124 64 108 64 100 72 L100 80" stroke="url(#logoGrad)" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <path d="M134 80 L158 80 L158 68 L134 68 L134 80Z" fill="url(#logoGrad)"/>
+            <circle cx="88" cy="92" r="6" fill="#FFB48A"/>
+            <circle cx="112" cy="96" r="4" fill="#FFB48A"/>
+            <!-- connection nodes -->
+            <path d="M94 72 L106 84 M94 84 L106 72" stroke="#FF8C5A" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+          </svg>
+          
+          <div class="logo-text-dnlc" style="font-size: 1.8rem; font-weight: 700; margin-top: 0.5rem;">DNLC GROUP</div>
+          <div class="logo-badge">HUB MANAGEMENT</div>
+          
+          <!-- additional decorative element: hub network lines -->
+          <div class="hub-ornament mt-6">
+            <svg width="180" height="40" viewBox="0 0 240 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 20 L40 20 M70 20 L100 20 M130 20 L160 20 M190 20 L220 20" stroke="#E54C2A" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.5"/>
+              <circle cx="40" cy="20" r="3" fill="#E54C2A"/>
+              <circle cx="100" cy="20" r="3" fill="#E54C2A"/>
+              <circle cx="160" cy="20" r="3" fill="#E54C2A"/>
+              <circle cx="220" cy="20" r="3" fill="#E54C2A"/>
+              <circle cx="25" cy="20" r="2" fill="#FF9F7A" stroke="#E54C2A" stroke-width="0.5"/>
+              <circle cx="85" cy="20" r="2" fill="#FF9F7A" stroke="#E54C2A" stroke-width="0.5"/>
+              <circle cx="145" cy="20" r="2" fill="#FF9F7A" stroke="#E54C2A" stroke-width="0.5"/>
+              <circle cx="205" cy="20" r="2" fill="#FF9F7A" stroke="#E54C2A" stroke-width="0.5"/>
+            </svg>
+            <p class="text-[10px] tracking-wider text-[#706f6c] dark:text-[#8a8a85] mt-2">connected logistics · multi‑hub sync</p>
+          </div>
+        </div>
+        <!-- subtle inner shadow overlay (original style) -->
         <div class="absolute inset-0 rounded-t-lg lg:rounded-t-none lg:rounded-r-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d] pointer-events-none"></div>
       </div>
     </main>
@@ -417,7 +469,7 @@ Here is a complete, deployable HTML document that creates a modern landing page 
   <!-- subtle spacer (matching original) -->
   <div class="h-14.5 hidden lg:block"></div>
 
-  <!-- optional small style to maintain link colors consistency -->
+  <!-- optional small style to maintain link colors consistency & dark mode for new elements -->
   <style>
     @media (prefers-color-scheme: dark) {
       .bg-white, .card-panel {
@@ -428,6 +480,20 @@ Here is a complete, deployable HTML document that creates a modern landing page 
       }
       .checklist-item::before {
         border-left-color: #3E3E3A;
+      }
+      .logo-badge {
+        color: #A1A09A;
+      }
+      .dnlc-logo svg circle[stroke="#E54C2A"] {
+        stroke: #FF6B4A;
+      }
+      .dnlc-logo svg path[stroke="#E54C2A"] {
+        stroke: #FF6B4A;
+      }
+      .logo-text-dnlc {
+        background: linear-gradient(135deg, #FF7A55, #FF4C2C);
+        background-clip: text;
+        -webkit-background-clip: text;
       }
     }
     .transition-all {
@@ -441,7 +507,10 @@ Here is a complete, deployable HTML document that creates a modern landing page 
     .dark .hover\:border-white:hover {
       border-color: white;
     }
+    /* ensure no leftover 13 graphic styling */
+    .graphic-panel svg:first-child {
+      display: block;
+    }
   </style>
 </body>
 </html>
-```
