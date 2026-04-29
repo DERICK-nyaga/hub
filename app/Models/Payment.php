@@ -90,6 +90,15 @@ protected $fillable = [
             ->orderBy('due_date');
     }
 
+    public function isOverdue(): bool
+    {
+        if ($this->status === 'paid') {
+            return false;
+        }
+        
+        $dueDate = $this->due_date instanceof Carbon ? $this->due_date : Carbon::parse($this->due_date);
+        return $dueDate->isPast();
+    }
     public function scopeOverdue($query)
     {
         return $query->where('status', '!=', 'paid')
@@ -105,4 +114,5 @@ protected $fillable = [
             default => 'secondary'
         };
     }
+
 }
