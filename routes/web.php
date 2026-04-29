@@ -26,7 +26,6 @@ use App\Controllers\EmployeeProfileController;
 
 Route::resource('order-numbers', OrderNumberController::class);
 
-// Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/sidebar', [DashboardController::class, 'sidebar']);
 
@@ -141,15 +140,30 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
 
     Route::resource('internet-providers', InternetProviderController::class);
 
+    // Payment Schedules Routes
+    Route::prefix('payments/schedules')->name('payments.schedules.')->group(function () {
+        Route::get('/create', [PaymentController::class, 'createSchedule'])->name('create');
+        Route::post('/', [PaymentController::class, 'storeSchedule'])->name('store');
+        Route::get('/', [PaymentController::class, 'indexSchedules'])->name('index');
+        
+        Route::get('/{schedule}', [PaymentController::class, 'showSchedule'])->name('show');
+        Route::get('/{schedule}/edit', [PaymentController::class, 'editSchedule'])->name('edit');
+        Route::put('/{schedule}', [PaymentController::class, 'updateSchedule'])->name('update');
+        Route::delete('/{schedule}', [PaymentController::class, 'destroySchedule'])->name('destroy');
+    });
+    // payments
     Route::prefix('payments')->group(function () {
 
-    Route::get('/index', [PaymentController::class, 'index'])->name('payments.index');
-    Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
-        ->name('payments.internet.create');
-    Route::post('/internet', [PaymentController::class, 'storeInternetPayment'])
-        ->name('payments.internet.store');
+        Route::get('/create', [PaymentController::class, 'create'])->name('payments.create');
+        Route::post('/', [PaymentController::class, 'store'])->name('payments.store');
+        Route::get('/index', [PaymentController::class, 'index'])->name('payments.index');
+        Route::get('/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
+        Route::put('/{payment}', [PaymentController::class, 'update'])->name('payments.update');
+        Route::delete('/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+        Route::get('/{payment}', [PaymentController::class, 'show'])->name('payments.show');
 
-    Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
+        // Internet Payment Routes (no duplicates now)
+        Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
             ->name('payments.internet.create');
         Route::post('/internet', [PaymentController::class, 'storeInternetPayment'])
             ->name('payments.internet.store');
@@ -163,21 +177,22 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
             ->name('payments.internet.show');
         Route::delete('/internet/{id}', [PaymentController::class, 'destroyInternetPayment'])
             ->name('payments.internet.destroy');
-                Route::get('/airtime/{id}/renew', [PaymentController::class, 'renewAirtimePayment'])
+            
+        // Airtime Payment Routes
+        Route::get('/airtime/{id}/renew', [PaymentController::class, 'renewAirtimePayment'])
             ->name('payments.airtime.renew');
-
         Route::delete('/airtime/{id}', [PaymentController::class, 'destroyAirtimePayment'])
             ->name('payments.airtime.delete');
-
         Route::get('/airtime/create', [PaymentController::class, 'createAirtimePayment'])
             ->name('payments.airtime.create');
         Route::post('/airtime', [PaymentController::class, 'storeAirtimePayment'])
             ->name('payments.airtime.store');
         Route::get('/airtime', [PaymentController::class, 'indexAirtimePayments'])
             ->name('payments.airtime.index');
-                Route::get('/airtime/{id}/details', [PaymentController::class, 'showAirtimeDetails'])
+        Route::get('/airtime/{id}/details', [PaymentController::class, 'showAirtimeDetails'])
             ->name('payments.airtime.details');
-        // Route::delete('/payments/airtime/{id}', [PaymentController::class, 'destroyAirtimePayment'])->name('payments.airtime.delete');
+        
+        // Other Payment Routes
         Route::get('/upcoming', [PaymentController::class, 'upcomingPayments'])
             ->name('payments.upcoming');
         Route::get('/overdue', [PaymentController::class, 'overduePayments'])
@@ -327,19 +342,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Payment Schedules Routes
-Route::prefix('payments/schedules')->name('payments.schedules.')->group(function () {
-    Route::get('/', [PaymentController::class, 'indexSchedules'])->name('index');
-    Route::get('/create', [PaymentController::class, 'createSchedule'])->name('create');
-    Route::post('/', [PaymentController::class, 'storeSchedule'])->name('store');
-    Route::get('/{schedule}', [PaymentController::class, 'showSchedule'])->name('show');
-    Route::get('/{schedule}/edit', [PaymentController::class, 'editSchedule'])->name('edit');
-    Route::put('/{schedule}', [PaymentController::class, 'updateSchedule'])->name('update');
-    Route::delete('/{schedule}', [PaymentController::class, 'destroySchedule'])->name('destroy');
-
-    // Route::get('/station/{stationId}', [PaymentController::class, 'showStationDetails'])->name('station.details');
-
-});
 
     Route::get('/payments/station-details/{stationId}', [PaymentController::class, 'showStationDetails'])
     ->name('payments.station.details');
