@@ -12,6 +12,7 @@ class Station extends Model
 {
     use HasFactory;
 
+    public $timestamps = true;
 
     protected $primaryKey = 'station_id';
     protected $fillable = [

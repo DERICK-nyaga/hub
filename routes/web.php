@@ -22,6 +22,7 @@ use App\Controllers\InternetProviderController;
 use App\Controllers\NotificationController;
 use App\Controllers\PendingApprovalController;
 use App\Controllers\EmployeeProfileController;
+use App\Controllers\LinkController;
 
 
 Route::resource('order-numbers', OrderNumberController::class);
@@ -78,6 +79,106 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
 // Route::middleware('auth')->group(function () {
 //     require __DIR__.'/web/approvals.php';
 // });
+
+    // Links managementroutes
+ 
+    // Alternative named routes for clarity
+    Route::prefix('links')->name('links.')->group(function () {
+        
+        // Basic CRUD Routes (explicit definitions)
+        Route::get('/', [LinkController::class, 'index'])->name('index');
+        Route::get('/create', [LinkController::class, 'create'])->name('create');
+        Route::post('/', [LinkController::class, 'store'])->name('store');
+        Route::get('/{link}', [LinkController::class, 'show'])->name('show');
+        Route::get('/{link}/edit', [LinkController::class, 'edit'])->name('edit');
+        Route::put('/{link}', [LinkController::class, 'update'])->name('update');
+        Route::patch('/{link}', [LinkController::class, 'update'])->name('update.patch'); // Alternative method
+        Route::delete('/{link}', [LinkController::class, 'destroy'])->name('destroy');
+        
+        // GDPR Special Routes (Right to Erasure)
+        Route::delete('/{link}/gdpr-erasure', [LinkController::class, 'gdprErasure'])
+             ->name('gdpr.erasure')
+             ->where('link', '[0-9]+');
+        
+        Route::delete('/{link}/force-delete', [LinkController::class, 'forceDelete'])
+             ->name('force.delete')
+             ->where('link', '[0-9]+');
+        
+        // Restore soft-deleted links
+        Route::post('/{link}/restore', [LinkController::class, 'restore'])
+             ->name('restore')
+             ->where('link', '[0-9]+');
+        
+        // Bulk Operations (Industrial efficiency)
+        Route::post('/bulk/activate', [LinkController::class, 'bulkActivate'])->name('bulk.activate');
+        Route::post('/bulk/deactivate', [LinkController::class, 'bulkDeactivate'])->name('bulk.deactivate');
+        Route::post('/bulk/delete', [LinkController::class, 'bulkDelete'])->name('bulk.delete');
+        
+        // Export functionality (GDPR data portability)
+        Route::get('/export/json', [LinkController::class, 'exportJson'])->name('export.json');
+        Route::get('/export/csv', [LinkController::class, 'exportCsv'])->name('export.csv');
+        
+        // Statistics and Analytics (Industrial monitoring)
+        Route::get('/statistics', [LinkController::class, 'statistics'])->name('statistics');
+        Route::get('/dashboard', [LinkController::class, 'dashboard'])->name('dashboard');
+        
+        // Filter routes (cleaner URLs)
+        Route::get('/type/{type}', [LinkController::class, 'filterByType'])
+             ->name('filter.type')
+             ->where('type', 'whatsapp|group|jforce|study');
+        
+        Route::get('/active', [LinkController::class, 'activeOnly'])->name('active');
+        Route::get('/expired', [LinkController::class, 'expiredOnly'])->name('expired');
+        Route::get('/trash', [LinkController::class, 'trash'])->name('trash');
+        
+        // Search route
+        Route::get('/search', [LinkController::class, 'search'])->name('search');
+        
+        // Single link actions
+        Route::post('/{link}/click', [LinkController::class, 'trackClick'])->name('track.click');
+        Route::post('/{link}/renew', [LinkController::class, 'renew'])->name('renew');
+        
+        // QR Code generation for links (industrial feature)
+        Route::get('/{link}/qrcode', [LinkController::class, 'generateQrCode'])->name('qrcode');
+    });
+
+    // Health check route for monitoring (industrial standard)
+    Route::get('/health', function () {
+        return response()->json([
+            'status' => 'operational',
+            'service' => 'Link Manager',
+            'timestamp' => now()->toIso8601String(),
+            'gdpr_compliant' => true
+        ]);
+    })->name('health.check');
+
+    // Fallback route for undefined routes
+    Route::fallback(function () {
+        return redirect()->route('links.index')
+            ->with('error', 'Page not found. Redirected to Link Manager.');
+    });
+
+      // GDPR Cookie Consent Routes
+    Route::prefix('cookie')->name('cookie.')->group(function () {
+        Route::get('/consent', function () {
+            return view('cookie-consent');
+        })->name('consent');
+        
+        Route::post('/accept', function () {
+            return response()->json(['message' => 'Cookie consent accepted'])->cookie('cookie_consent', 'accepted', 60 * 24 * 30);
+        })->name('accept');
+        
+        Route::post('/reject', function () {
+            return response()->json(['message' => 'Cookie consent rejected'])->cookie('cookie_consent', 'rejected', 60 * 24 * 30);
+        })->name('reject');
+    });
+    
+    // Main resource routes for Link Management
+    Route::resource('links', LinkController::class)->parameters([
+        'links' => 'link'
+    ]);
+    
+    // end of link management routes
 
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:5,1');

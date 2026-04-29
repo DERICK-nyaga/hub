@@ -55,8 +55,14 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <th>Created Date:</th>
-                                    <td>{{ $station->created_at->format('M d, Y') }}</td>
+                                <th>Created Date:</th>
+                                <td>
+                                    @if($station->created_at)
+                                        {{ $station->created_at->format('M d, Y') }}
+                                    @else
+                                        <span class="text-muted">Not available</span>
+                                    @endif
+                                </td>
                                 </tr>
                             </table>
                         </div>
@@ -180,7 +186,13 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <small class="text-muted">Last Updated:</small>
-                        <div>{{ $station->updated_at->format('M d, Y \a\t h:i A') }}</div>
+                        <div>
+                            @if($station->updated_at)
+                                {{ $station->updated_at->format('M d, Y \a\t h:i A') }}
+                            @else
+                                <span class="text-muted">Not available</span>
+                            @endif
+                        </div>
                     </div>
                     <div class="mb-3">
                         <small class="text-muted">Station Status:</small>
@@ -410,7 +422,11 @@
                                                                 <tbody>
                                                                     @foreach($employeeDeductions as $deduction)
                                                                         <tr>
-                                                                            <td>{{ $deduction->date->format('M d, Y') }}</td>
+                                                                            @if($deduction->date)
+                                                                            <td>{{ $deduction->date->format('M d, Y \a\t h:i A') }}</td>
+                                                                            @else
+                                                                            <td>-</td>
+                                                                            @endif
                                                                             <td>{{ $deduction->description }}</td>
                                                                             <td>
                                                                                 <span class="badge bg-info">
