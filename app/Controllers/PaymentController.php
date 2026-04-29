@@ -81,7 +81,6 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Pass the payment variable (will be null for create, has value for edit)
             return view('payments.create', [
                 'stations' => $stations,
                 'vendors' => $vendors,
@@ -177,7 +176,7 @@ class PaymentController extends Controller
                 'types' => $types,
                 'default_due_date' => $default_due_date,
                 'statuses' => $statuses,
-                'payment' => $payment  // Pass the existing payment for editing
+                'payment' => $payment 
             ]);
 
         } catch (\Exception $e) {
@@ -207,7 +206,7 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             return $this->handleError($e, $request, 'Error updating payment');
         }
-}
+    }
 
     public function destroy(Request $request, Payment $payment)
     {
@@ -299,7 +298,6 @@ class PaymentController extends Controller
                 }
             ])->findOrFail($stationId);
             
-            // Get additional statistics
             $stats = [
                 'total_employees' => $station->employees->count(),
                 'active_employees' => $station->employees->where('status', 'active')->count(),
@@ -877,34 +875,34 @@ class PaymentController extends Controller
         throw $e;
     }
 
-private function validatePaymentStore(Request $request): array
-{
-    $rules = [
-        'station_id' => 'required|exists:stations,station_id',
-        'vendor_id' => 'nullable|exists:vendors,id',
-        'title' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'amount' => 'required|numeric|min:0',
-        'due_date' => 'required|date',
-        'status' => 'required|in:pending,approved,paid,rejected',
-        'type' => 'required|in:utility,service,product,other',
-        'attachment' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
-        'is_recurring' => 'boolean',
+    private function validatePaymentStore(Request $request): array
+    {
+        $rules = [
+            'station_id' => 'required|exists:stations,station_id',
+            'vendor_id' => 'nullable|exists:vendors,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'required|numeric|min:0',
+            'due_date' => 'required|date',
+            'status' => 'required|in:pending,approved,paid,rejected',
+            'type' => 'required|in:utility,service,product,other',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
+            'is_recurring' => 'boolean',
 
-    ];
-    
-    // Handle is_recurring - it might come as 'on' or '1' or null
-    $isRecurring = $request->input('is_recurring');
-    if ($isRecurring === 'on' || $isRecurring === '1' || $isRecurring === true) {
-        $rules['is_recurring'] = 'boolean';
-        $rules['recurrence'] = 'required|in:weekly,monthly,yearly';
-        $rules['recurrence_ends_at'] = 'nullable|date|after:due_date';
-    } else {
-        $rules['is_recurring'] = 'boolean';
+        ];
+        
+        // Handle is_recurring - it might come as 'on' or '1' or null
+        $isRecurring = $request->input('is_recurring');
+        if ($isRecurring === 'on' || $isRecurring === '1' || $isRecurring === true) {
+            $rules['is_recurring'] = 'boolean';
+            $rules['recurrence'] = 'required|in:weekly,monthly,yearly';
+            $rules['recurrence_ends_at'] = 'nullable|date|after:due_date';
+        } else {
+            $rules['is_recurring'] = 'boolean';
+        }
+        
+        return $request->validate($rules);
     }
-    
-    return $request->validate($rules);
-}
 
     private function validatePaymentUpdate(Request $request): array
     {
@@ -1429,72 +1427,72 @@ private function validatePaymentStore(Request $request): array
     }
 
     public function showSchedule(Request $request, $id)
-{
-    try {
-        $schedule = PaymentSchedule::with('station')->findOrFail($id);
-        
-        if ($this->isApiRequest($request)) {
-            return $this->jsonSuccess($schedule);
-        }
-        
-        return view('payments.schedules.show', compact('schedule'));
-        
-    } catch (\Exception $e) {
-        return $this->handleError($e, $request, 'Failed to fetch schedule');
-    }
-}
-
-public function editSchedule(Request $request, $id)
-{
-    try {
-        $schedule = PaymentSchedule::findOrFail($id);
-        $stations = Station::all();
-        
-        if ($this->isApiRequest($request)) {
-            return $this->jsonSuccess([
-                'schedule' => $schedule,
-                'stations' => $stations
-            ]);
-        }
-        
-        return view('payments.schedules.edit', compact('schedule', 'stations'));
-        
-    } catch (\Exception $e) {
-        return $this->handleError($e, $request, 'Failed to load edit form');
-    }
-}
-
-public function updateSchedule(Request $request, $id)
-{
-    try {
-        $schedule = PaymentSchedule::findOrFail($id);
-        
-        $validated = $request->validate([
-            'station_id' => 'required|exists:stations,station_id',
-            'payment_type' => 'required|in:internet,airtime',
-            'scheduled_date' => 'required|date',
-            'scheduled_amount' => 'required|numeric|min:0',
-            'frequency' => 'required|in:monthly,quarterly,yearly,custom',
-            'is_recurring' => 'boolean',
-            'auto_pay' => 'boolean',
-            'description' => 'nullable|string'
-        ]);
-        
-        $schedule->update($validated);
-        
-        if ($this->isApiRequest($request)) {
-            return $this->jsonSuccess($schedule->load('station'), 'Schedule updated successfully');
-        }
-        
-        return redirect()->route('payments.schedules.index')
-            ->with('success', 'Schedule updated successfully!');
+    {
+        try {
+            $schedule = PaymentSchedule::with('station')->findOrFail($id);
             
-    } catch (ValidationException $e) {
-        return $this->handleValidationError($e, $request);
-    } catch (\Exception $e) {
-        return $this->handleError($e, $request, 'Error updating schedule');
+            if ($this->isApiRequest($request)) {
+                return $this->jsonSuccess($schedule);
+            }
+            
+            return view('payments.schedules.show', compact('schedule'));
+            
+        } catch (\Exception $e) {
+            return $this->handleError($e, $request, 'Failed to fetch schedule');
+        }
     }
-}
+
+    public function editSchedule(Request $request, $id)
+    {
+        try {
+            $schedule = PaymentSchedule::findOrFail($id);
+            $stations = Station::all();
+            
+            if ($this->isApiRequest($request)) {
+                return $this->jsonSuccess([
+                    'schedule' => $schedule,
+                    'stations' => $stations
+                ]);
+            }
+            
+            return view('payments.schedules.edit', compact('schedule', 'stations'));
+            
+        } catch (\Exception $e) {
+            return $this->handleError($e, $request, 'Failed to load edit form');
+        }
+    }
+
+    public function updateSchedule(Request $request, $id)
+    {
+        try {
+            $schedule = PaymentSchedule::findOrFail($id);
+            
+            $validated = $request->validate([
+                'station_id' => 'required|exists:stations,station_id',
+                'payment_type' => 'required|in:internet,airtime',
+                'scheduled_date' => 'required|date',
+                'scheduled_amount' => 'required|numeric|min:0',
+                'frequency' => 'required|in:monthly,quarterly,yearly,custom',
+                'is_recurring' => 'boolean',
+                'auto_pay' => 'boolean',
+                'description' => 'nullable|string'
+            ]);
+            
+            $schedule->update($validated);
+            
+            if ($this->isApiRequest($request)) {
+                return $this->jsonSuccess($schedule->load('station'), 'Schedule updated successfully');
+            }
+            
+            return redirect()->route('payments.schedules.index')
+                ->with('success', 'Schedule updated successfully!');
+                
+        } catch (ValidationException $e) {
+            return $this->handleValidationError($e, $request);
+        } catch (\Exception $e) {
+            return $this->handleError($e, $request, 'Error updating schedule');
+        }
+    }
 
     public function destroySchedule(Request $request, $id)
     {
