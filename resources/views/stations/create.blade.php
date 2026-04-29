@@ -1,72 +1,3 @@
-{{-- @extends('layouts.app')
-
-@section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">Add New Station</h5>
-                </div>
-
-                <div class="card-body">
-                    <form action="{{ route('stations.store') }}" method="POST">
-                        @csrf
-
-                        <div class="form-group">
-                            <label for="name">Station Name</label>
-                            <input type="text" class="form-control @error('name') is-invalid @enderror"
-                                   id="name" name="name" value="{{ old('name') }}" required>
-                            @error('name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="form-group">
-                            <label for="location">Location</label>
-                            <input type="text" class="form-control @error('location') is-invalid @enderror"
-                                   id="location" name="location" value="{{ old('location') }}" required>
-                            @error('location')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="form-group">
-                            <label for="monthly_loss">Monthly Profit/Loss (KES)</label>
-                            <input type="number" step="0.01" class="form-control @error('monthly_loss') is-invalid @enderror"
-                                   id="monthly_loss" name="monthly_loss" value="{{ old('monthly_loss', 0) }}" required>
-                            @error('monthly_loss')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="form-group">
-                            <label for="deductions">Deductions (KES)</label>
-                            <input type="number" step="0.01" class="form-control @error('deductions') is-invalid @enderror"
-                                   id="deductions" name="deductions" value="{{ old('deductions', 0) }}">
-                            @error('deductions')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="form-group mb-0">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Save Station
-                            </button>
-                            <a href="{{ route('stations.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Cancel
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-@endsection --}}
-
-
-
 @extends('layouts.app')
 
 @section('content')
@@ -82,54 +13,184 @@
                     <form action="{{ route('stations.store') }}" method="POST">
                         @csrf
 
-                        <div class="form-group">
-                            <label for="name">Station Name</label>
-                            <input type="text" class="form-control @error('name') is-invalid @enderror"
-                                   id="name" name="name" value="{{ old('name') }}" required>
-                            @error('name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <!-- Basic Information Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Basic Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-3">
+                                    <label for="name">Station Name *</label>
+                                    <input type="text" class="form-control @error('name') is-invalid @enderror"
+                                           id="name" name="name" value="{{ old('name') }}" required>
+                                    @error('name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="code">Station Code</label>
+                                    <input type="text" class="form-control @error('code') is-invalid @enderror"
+                                           id="code" name="code" value="{{ old('code') }}"
+                                           placeholder="e.g., STN001">
+                                    @error('code')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="form-text text-muted">Optional unique identifier for the station.</small>
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="status">Status</label>
+                                    <select class="form-control @error('status') is-invalid @enderror"
+                                            id="status" name="status">
+                                        <option value="active" {{ old('status') == 'active' ? 'selected' : '' }}>Active</option>
+                                        <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                        <option value="pending" {{ old('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                    </select>
+                                    @error('status')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="location">Location</label>
-                            <input type="text" class="form-control @error('location') is-invalid @enderror"
-                                   id="location" name="location" value="{{ old('location') }}" required>
-                            @error('location')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <!-- Location & Address Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Location & Address</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-3">
+                                    <label for="location">Location *</label>
+                                    <input type="text" class="form-control @error('location') is-invalid @enderror"
+                                           id="location" name="location" value="{{ old('location') }}" required>
+                                    @error('location')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="address">Full Address</label>
+                                    <textarea class="form-control @error('address') is-invalid @enderror"
+                                              id="address" name="address" rows="2"
+                                              placeholder="Street, building, etc.">{{ old('address') }}</textarea>
+                                    @error('address')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="region">Region</label>
+                                    <input type="text" class="form-control @error('region') is-invalid @enderror"
+                                           id="region" name="region" value="{{ old('region') }}"
+                                           placeholder="e.g., Nairobi, Mombasa, Kisumu">
+                                    @error('region')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="mobile_number">Mobile Number</label>
-                            <input type="tel" class="form-control @error('mobile_number') is-invalid @enderror"
-                                   id="mobile_number" name="mobile_number"
-                                   value="{{ old('mobile_number') }}"
-                                   placeholder="e.g., 0712345678">
-                            @error('mobile_number')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <small class="form-text text-muted">
-                                Optional. Include country code if needed.
-                            </small>
+                        <!-- Contact Information Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Contact Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-3">
+                                    <label for="contact_person">Contact Person</label>
+                                    <input type="text" class="form-control @error('contact_person') is-invalid @enderror"
+                                           id="contact_person" name="contact_person" value="{{ old('contact_person') }}"
+                                           placeholder="Name of primary contact">
+                                    @error('contact_person')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="contact_phone">Contact Phone</label>
+                                    <input type="tel" class="form-control @error('contact_phone') is-invalid @enderror"
+                                           id="contact_phone" name="contact_phone" value="{{ old('contact_phone') }}"
+                                           placeholder="e.g., 0712345678">
+                                    @error('contact_phone')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="contact_email">Contact Email</label>
+                                    <input type="email" class="form-control @error('contact_email') is-invalid @enderror"
+                                           id="contact_email" name="contact_email" value="{{ old('contact_email') }}"
+                                           placeholder="station@example.com">
+                                    @error('contact_email')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="mobile_number">Mobile Number</label>
+                                    <input type="tel" class="form-control @error('mobile_number') is-invalid @enderror"
+                                           id="mobile_number" name="mobile_number" value="{{ old('mobile_number') }}"
+                                           placeholder="e.g., 0712345678">
+                                    @error('mobile_number')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="monthly_loss">Monthly Profit/Loss (KES)</label>
-                            <input type="number" step="0.01" class="form-control @error('monthly_loss') is-invalid @enderror"
-                                   id="monthly_loss" name="monthly_loss" value="{{ old('monthly_loss', 0) }}" required>
-                            @error('monthly_loss')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <!-- Financial Information Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Financial Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-3">
+                                    <label for="monthly_loss">Monthly Profit/Loss (KES) *</label>
+                                    <input type="number" step="0.01" class="form-control @error('monthly_loss') is-invalid @enderror"
+                                           id="monthly_loss" name="monthly_loss" value="{{ old('monthly_loss', 0) }}" required>
+                                    @error('monthly_loss')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="form-text text-muted">Positive = Profit, Negative = Loss</small>
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="deductions">Deductions (KES)</label>
+                                    <input type="number" step="0.01" class="form-control @error('deductions') is-invalid @enderror"
+                                           id="deductions" name="deductions" value="{{ old('deductions', 0) }}">
+                                    @error('deductions')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label for="opening_date">Opening Date</label>
+                                    <input type="date" class="form-control @error('opening_date') is-invalid @enderror"
+                                           id="opening_date" name="opening_date" value="{{ old('opening_date') }}">
+                                    @error('opening_date')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="deductions">Deductions (KES)</label>
-                            <input type="number" step="0.01" class="form-control @error('deductions') is-invalid @enderror"
-                                   id="deductions" name="deductions" value="{{ old('deductions', 0) }}">
-                            @error('deductions')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <!-- Additional Information Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Additional Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-3">
+                                    <label for="notes">Notes</label>
+                                    <textarea class="form-control @error('notes') is-invalid @enderror"
+                                              id="notes" name="notes" rows="3"
+                                              placeholder="Any additional information about this station...">{{ old('notes') }}</textarea>
+                                    @error('notes')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group mb-0">
