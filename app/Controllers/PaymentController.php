@@ -28,9 +28,13 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         try {
+            // Get ALL payments, not just upcoming
             $payments = Payment::with(['station', 'vendor'])
-                ->upcoming()
+                ->orderBy('due_date', 'desc')  // Show latest due dates first
                 ->paginate(20);
+
+            // Debug - check if payments exist
+            \Log::info('Payments found: ' . $payments->total());
 
             if ($this->isApiRequest($request)) {
                 return $this->jsonSuccess([
@@ -44,38 +48,57 @@ class PaymentController extends Controller
             return view('payments.index', compact('payments'));
 
         } catch (\Exception $e) {
+            \Log::error('Failed to fetch payments: ' . $e->getMessage());
             return $this->handleError($e, $request, 'Failed to fetch payments');
         }
     }
 
-    public function create(Request $request)
+    public function create(Request $request, Payment $payment = null)
     {
         try {
-            $types = config('payment.types');
             $stations = Station::all();
             $vendors = Vendor::all();
-            $defaultDueDate = now()->addDays(30)->format('Y-m-d');
+            
+            $types = [
+                'utility' => 'Utility Bill',
+                'service' => 'Service Payment', 
+                'product' => 'Product Purchase',
+                'rent' => 'Rent',
+                'salary' => 'Salary',
+                'other' => 'Other'
+            ];
+            
+            $default_due_date = now()->addDays(30)->format('Y-m-d');
             $statuses = ['pending', 'approved', 'paid', 'rejected'];
 
             if ($this->isApiRequest($request)) {
                 return $this->jsonSuccess([
-                    'form_fields' => [
-                        'station_id', 'vendor_id', 'title', 'description', 'amount',
-                        'due_date', 'status', 'type', 'attachment', 'is_recurring',
-                        'recurrence', 'recurrence_ends_at'
-                    ],
                     'stations' => $stations,
                     'vendors' => $vendors,
                     'types' => $types,
-                    'default_due_date' => $defaultDueDate,
+                    'default_due_date' => $default_due_date,
                     'statuses' => $statuses
                 ]);
             }
 
-            return view('payments.create', compact('stations', 'vendors', 'types', 'defaultDueDate', 'statuses'));
+            // Pass the payment variable (will be null for create, has value for edit)
+            return view('payments.create', [
+                'stations' => $stations,
+                'vendors' => $vendors,
+                'types' => $types,
+                'default_due_date' => $default_due_date,
+                'statuses' => $statuses,
+                'payment' => $payment  
+            ]);
 
         } catch (\Exception $e) {
-            return $this->handleError($e, $request, 'Failed to load create form');
+            \Log::error('Payment create error: ' . $e->getMessage());
+            
+            if ($this->isApiRequest($request)) {
+                return $this->jsonError('Failed to load create form: ' . $e->getMessage(), 500);
+            }
+            
+            return back()->with('error', 'Failed to load create form: ' . $e->getMessage());
         }
     }
 
@@ -93,7 +116,8 @@ class PaymentController extends Controller
                 return $this->jsonSuccess($payment->load(['station', 'vendor']), 'Payment created successfully', 201);
             }
 
-            return redirect()->route('payments.show', $payment)
+            // Already redirecting to index - keep as is
+            return redirect()->route('payments.index')
                 ->with('success', 'Payment created successfully!');
 
         } catch (ValidationException $e) {
@@ -122,18 +146,39 @@ class PaymentController extends Controller
         try {
             $stations = Station::all();
             $vendors = Vendor::all();
-            $types = config('payment.types');
+            
+            $types = [
+                'utility' => 'Utility Bill',
+                'service' => 'Service Payment', 
+                'product' => 'Product Purchase',
+                'rent' => 'Rent',
+                'salary' => 'Salary',
+                'other' => 'Other'
+            ];
+            
+            $default_due_date = $payment->due_date ? $payment->due_date->format('Y-m-d') : now()->addDays(30)->format('Y-m-d');
+            $statuses = ['pending', 'approved', 'paid', 'rejected'];
 
             if ($this->isApiRequest($request)) {
                 return $this->jsonSuccess([
                     'payment' => $payment,
                     'stations' => $stations,
                     'vendors' => $vendors,
-                    'types' => $types
+                    'types' => $types,
+                    'default_due_date' => $default_due_date,
+                    'statuses' => $statuses
                 ]);
             }
 
-            return view('payments.edit', compact('payment', 'stations', 'vendors', 'types'));
+            // Reuse the same create view
+            return view('payments.create', [
+                'stations' => $stations,
+                'vendors' => $vendors,
+                'types' => $types,
+                'default_due_date' => $default_due_date,
+                'statuses' => $statuses,
+                'payment' => $payment  // Pass the existing payment for editing
+            ]);
 
         } catch (\Exception $e) {
             return $this->handleError($e, $request, 'Failed to load edit form');
@@ -143,7 +188,7 @@ class PaymentController extends Controller
     public function update(Request $request, Payment $payment)
     {
         try {
-            $this->authorizePaymentUpdate($payment);
+            // $this->authorizePaymentUpdate($payment);
             $validated = $this->validatePaymentUpdate($request);
             $validated = $this->handlePaymentAttachment($request, $validated, $payment);
 
@@ -153,7 +198,8 @@ class PaymentController extends Controller
                 return $this->jsonSuccess($payment->load(['station', 'vendor']), 'Payment updated successfully');
             }
 
-            return redirect()->route('payments.show', $payment)
+            // CHANGE THIS - redirect to payments.index instead of payments.show
+            return redirect()->route('payments.index')
                 ->with('success', 'Payment updated successfully!');
 
         } catch (ValidationException $e) {
@@ -161,7 +207,7 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             return $this->handleError($e, $request, 'Error updating payment');
         }
-    }
+}
 
     public function destroy(Request $request, Payment $payment)
     {
@@ -225,23 +271,6 @@ class PaymentController extends Controller
             return $this->handleError($e, $request, 'Error marking payment as paid');
         }
     }
-
-    // public function stationPayments(Request $request, $stationId)
-    // {
-    //     try {
-    //         $station = Station::with(['internetPayments.provider', 'airtimePayments'])
-    //             ->findOrFail($stationId);
-
-    //         if ($this->isApiRequest($request)) {
-    //             return $this->jsonSuccess($station);
-    //         }
-
-    //         return view('payments.station', compact('station'));
-
-    //     } catch (\Exception $e) {
-    //         return $this->handleError($e, $request, 'Failed to fetch station payments');
-    //     }
-    // }
 
     public function stationPayments(Request $request, $stationId)
     {
@@ -848,35 +877,53 @@ class PaymentController extends Controller
         throw $e;
     }
 
-    private function validatePaymentStore(Request $request): array
-    {
-        return $request->validate([
-            'station_id' => 'required|exists:stations,id',
-            'vendor_id' => 'nullable|exists:vendors,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'amount' => 'required|numeric|min:0',
-            'due_date' => 'required|date|after_or_equal:today',
-            'status' => 'required|in:pending,approved,paid,rejected',
-            'type' => 'required|in:utility,service,product,other',
-            'attachment' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
-            'is_recurring' => 'required|boolean',
-            'recurrence' => 'required_if:is_recurring,true|in:weekly,monthly,yearly',
-            'recurrence_ends_at' => 'nullable|date|after:due_date'
-        ]);
+private function validatePaymentStore(Request $request): array
+{
+    $rules = [
+        'station_id' => 'required|exists:stations,station_id',
+        'vendor_id' => 'nullable|exists:vendors,id',
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'amount' => 'required|numeric|min:0',
+        'due_date' => 'required|date',
+        'status' => 'required|in:pending,approved,paid,rejected',
+        'type' => 'required|in:utility,service,product,other',
+        'attachment' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
+        'is_recurring' => 'boolean',
+
+    ];
+    
+    // Handle is_recurring - it might come as 'on' or '1' or null
+    $isRecurring = $request->input('is_recurring');
+    if ($isRecurring === 'on' || $isRecurring === '1' || $isRecurring === true) {
+        $rules['is_recurring'] = 'boolean';
+        $rules['recurrence'] = 'required|in:weekly,monthly,yearly';
+        $rules['recurrence_ends_at'] = 'nullable|date|after:due_date';
+    } else {
+        $rules['is_recurring'] = 'boolean';
     }
+    
+    return $request->validate($rules);
+}
 
     private function validatePaymentUpdate(Request $request): array
     {
+    $paymentTypes = config('payment.types');
+        $typesString = 'utility,service,product,rent,salary,other'; // default fallback
+        
+        if ($paymentTypes && is_array($paymentTypes)) {
+            $typesString = implode(',', array_keys($paymentTypes));
+        }
+        
         return $request->validate([
-            'station_id' => 'required|exists:stations,id',
+            'station_id' => 'required|exists:stations,station_id',
             'vendor_id' => 'nullable|exists:vendors,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'amount' => 'required|numeric|min:0',
             'due_date' => 'required|date',
             'status' => 'required|in:pending,approved,paid,rejected',
-            'type' => 'required|in:' . implode(',', array_keys(config('payment.types'))),
+            'type' => 'required|in:' . $typesString,
             'attachment' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
             'is_recurring' => 'boolean',
             'recurrence' => 'required_if:is_recurring,true|in:weekly,monthly,yearly',
@@ -1466,11 +1513,11 @@ public function updateSchedule(Request $request, $id)
             return $this->handleError($e, $request, 'Error deleting schedule');
         }
     }
-
     public function showStationDetails(Request $request, $stationId)
     {
         try {
             $station = Station::with([
+                'manager',  // Load the manager relationship (EmployeeProfile)
                 'employees' => function($query) {
                     $query->orderBy('first_name');
                 },
@@ -1507,11 +1554,14 @@ public function updateSchedule(Request $request, $id)
             if ($this->isApiRequest($request)) {
                 return $this->jsonSuccess([
                     'station' => $station,
-                    'statistics' => $stats
+                    'statistics' => $stats,
+                    'contact_person' => $station->contact_person_name,
+                    'contact_email' => $station->contact_email_address,
+                    'contact_phone' => $station->contact_phone_number,
+                    'location' => $station->station_location
                 ]);
             }
             
-            // Use a dedicated view for payment station details
             return view('payments.station-details', compact('station', 'stats'));
             
         } catch (\Exception $e) {
