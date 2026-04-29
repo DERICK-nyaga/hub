@@ -22,42 +22,49 @@ class StationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            // Basic Information
             'name' => 'required|string|max:255',
+            'code' => 'nullable|string|max:50|unique:stations,code',
+            'status' => 'nullable|in:active,inactive,pending',
+            
+            // Location & Address
             'location' => 'required|string|max:255',
+            'address' => 'nullable|string',
+            'region' => 'nullable|string|max:100',
+            
+            // Contact Information
+            'contact_person' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:30',
+            'contact_email' => 'nullable|email|max:255',
             'mobile_number' => 'nullable|string|max:30',
+            
+            // Financial Information
             'monthly_loss' => 'required|numeric',
             'deductions' => 'nullable|numeric',
+            'opening_date' => 'nullable|date',
+            
+            // Additional Information
+            'notes' => 'nullable|string',
         ]);
 
-        Station::create($validated);
+        $station = Station::create($validated);
 
         return redirect()->route('stations.index')->with('success', 'Station created successfully!');
     }
 
-public function show(Station $station)
-{
-    $station->loadCount(['employees', 'payments'])
-            ->load(['employees' => function($query) {
-                $query->withCount('deductions')
-                      ->withSum('deductions', 'amount');
-            }]);
+    public function show(Station $station)
+    {
+        $station->loadCount(['employees', 'payments'])
+                ->load(['employees' => function($query) {
+                    $query->withCount('deductions')
+                          ->withSum('deductions', 'amount');
+                }]);
 
-                if ($station->employees->count() > 0) {
-        foreach ($station->employees as $employee) {
-            Log::info('Employee deductions data:', [
-                'employee_id' => $employee->employee_id,
-                'name' => $employee->full_name,
-                'deductions_count' => $employee->deductions_count,
-                'deductions_sum_amount' => $employee->deductions_sum_amount,
-                'has_deductions_relation' => method_exists($employee, 'deductions')
-            ]);
-        }
+        $station->loadSum('payments', 'amount');
+
+        return view('stations.show', compact('station'));
     }
 
-    $station->loadSum('payments', 'amount');
-
-    return view('stations.show', compact('station'));
-}
     public function edit(Station $station)
     {
         return view('stations.edit', compact('station'));
@@ -66,11 +73,29 @@ public function show(Station $station)
     public function update(Request $request, Station $station)
     {
         $validated = $request->validate([
+            // Basic Information
             'name' => 'required|string|max:255',
+            'code' => 'nullable|string|max:50|unique:stations,code,' . $station->station_id . ',station_id',
+            'status' => 'nullable|in:active,inactive,pending',
+            
+            // Location & Address
             'location' => 'required|string|max:255',
-            'mobile_number' => 'nullable|string|max:30|regex:/^\+?[0-9\-\s\(\)]{7,20}$/',
+            'address' => 'nullable|string',
+            'region' => 'nullable|string|max:100',
+            
+            // Contact Information
+            'contact_person' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:30',
+            'contact_email' => 'nullable|email|max:255',
+            'mobile_number' => 'nullable|string|max:30',
+            
+            // Financial Information
             'monthly_loss' => 'required|numeric',
             'deductions' => 'nullable|numeric',
+            'opening_date' => 'nullable|date',
+            
+            // Additional Information
+            'notes' => 'nullable|string',
         ]);
 
         $station->update($validated);
