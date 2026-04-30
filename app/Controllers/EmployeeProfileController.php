@@ -162,7 +162,7 @@ class EmployeeProfileController extends Controller
             }
 
             return redirect()
-                ->route('employees_profile.show', $employee->id)
+                ->route('employees_profile.index', $employee->id)
                 ->with('success', $successMessage);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
