@@ -23,6 +23,10 @@ use App\Controllers\NotificationController;
 use App\Controllers\PendingApprovalController;
 use App\Controllers\EmployeeProfileController;
 use App\Controllers\LinkController;
+use App\Controllers\Salary\SalaryDashboardController;
+use App\Controllers\Salary\SalaryPaymentController;
+use App\Controllers\Salary\SalaryDeductionController;
+use App\Controllers\Salary\SalaryScheduleController;
 
 
 Route::resource('order-numbers', OrderNumberController::class);
@@ -80,8 +84,43 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
 //     require __DIR__.'/web/approvals.php';
 // });
 
-    // Links managementroutes
- 
+// ->middleware(['auth', 'verified'])
+    // Salary Management Routes
+    Route::prefix('salary')->name('salary.')->group(function () {
+        // Dashboard
+        Route::get('/', [SalaryDashboardController::class, 'index'])->name('dashboard');
+        
+        // Payments
+        Route::resource('payments', SalaryPaymentController::class)->except(['edit', 'update', 'destroy']);
+        Route::post('payments/{payment}/approve', [SalaryPaymentController::class, 'approve'])->name('payments.approve');
+        Route::get('history', [SalaryPaymentController::class, 'history'])->name('history');
+        
+        // Deductions
+        Route::resource('deductions', SalaryDeductionController::class)->only(['index', 'store']);
+        Route::post('deductions/{deduction}/approve', [SalaryDeductionController::class, 'approve'])->name('deductions.approve');
+        Route::get('deductions/{id}', [SalaryDeductionController::class, 'show'])->name('deductions.show');
+        Route::post('deductions/{deduction}/cancel', [SalaryDeductionController::class, 'cancel'])->name('deductions.cancel');
+        
+        // Schedules
+        Route::resource('schedules', SalaryScheduleController::class)->only(['index', 'store']);
+        Route::post('schedules/{schedule}/approve', [SalaryScheduleController::class, 'approve'])->name('schedules.approve');
+        Route::post('schedules/{schedule}/process', [SalaryScheduleController::class, 'processNow'])->name('schedules.process');
+        Route::get('payments/{payment}/print', [SalaryPaymentController::class, 'print'])->name('payments.print');
+        Route::get('payments/{id}', [SalaryPaymentController::class, 'show'])->name('payments.show');
+        
+        // salary reports and analytics
+        Route::resource('schedules', SalaryScheduleController::class);
+        Route::post('schedules/{schedule}/approve', [SalaryScheduleController::class, 'approve'])->name('schedules.approve');
+        Route::post('schedules/{schedule}/reject', [SalaryScheduleController::class, 'reject'])->name('schedules.reject');
+        Route::post('schedules/{schedule}/process', [SalaryScheduleController::class, 'processNow'])->name('schedules.process');
+        Route::get('schedules/{schedule}/edit', [SalaryScheduleController::class, 'edit'])->name('schedules.edit');
+        // salary history and analytics
+        Route::get('history', [SalaryPaymentController::class, 'history'])->name('history');
+        Route::get('history/chart-data', [SalaryPaymentController::class, 'chartData'])->name('history.chart');
+        Route::get('payments/{payment}/receipt', [SalaryPaymentController::class, 'receipt'])->name('payments.receipt');
+    });
+
+    // Links managementroutes 
     // Alternative named routes for clarity
     Route::prefix('links')->name('links.')->group(function () {
         
