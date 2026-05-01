@@ -1,4 +1,3 @@
-{{-- resources/views/salary/schedules/index.blade.php --}}
 @extends('layouts.salary-app')
 
 @section('title', 'Payment Schedules')
@@ -6,7 +5,7 @@
 @section('content')
 <div x-data="schedulesManager()" x-init="init()" class="space-y-6">
     
-    <!-- Page Header -->
+    <!-- Page Header with Role-based Buttons -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -15,9 +14,55 @@
             </h2>
             <p class="text-slate-500 text-sm mt-1">Schedule future salary payments, advances, and recurring deductions</p>
         </div>
-        <button @click="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
-            <i class="fas fa-plus-circle"></i> New Schedule
-        </button>
+        
+        <!-- Role-based Action Buttons -->
+        <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }"
+             x-on:roleChanged.window="role = $event.detail.role"
+             class="flex gap-3">
+            <!-- Admin: Can create new schedules -->
+            <div x-show="role === 'Admin'" x-cloak>
+                <button @click="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+                    <i class="fas fa-plus-circle"></i> New Schedule
+                </button>
+            </div>
+            <!-- Director: Can bulk approve schedules -->
+            <div x-show="role === 'Director'" x-cloak>
+                <button onclick="bulkApprove()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+                    <i class="fas fa-check-double"></i> Bulk Approve
+                </button>
+            </div>
+            <!-- Export button - visible to both -->
+            <button onclick="exportSchedules()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+                <i class="fas fa-download"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Role-based Info Banner -->
+    <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }"
+         x-on:roleChanged.window="role = $event.detail.role">
+        
+        <!-- Admin Banner -->
+        <div x-show="role === 'Admin'" x-cloak class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg mb-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-crown text-indigo-600 text-xl"></i>
+                <div>
+                    <p class="font-semibold text-indigo-800">Administrator Access - Schedules</p>
+                    <p class="text-sm text-indigo-600">You can create, edit, delete, and approve any schedule.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Director Banner -->
+        <div x-show="role === 'Director'" x-cloak class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg mb-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-star-of-life text-amber-600 text-xl"></i>
+                <div>
+                    <p class="font-semibold text-amber-800">Director Access - Schedules</p>
+                    <p class="text-sm text-amber-600">You can review, approve, and process scheduled payments.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Stats Cards -->
@@ -120,12 +165,17 @@
         </form>
     </div>
 
-    <!-- Schedules Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <!-- Schedules Table with Role-based Actions -->
+    <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }"
+         x-on:roleChanged.window="role = $event.detail.role"
+         class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                            <input type="checkbox" id="selectAll" onclick="toggleSelectAll()" class="rounded">
+                        </th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">ID</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Employee</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Amount</th>
@@ -133,12 +183,19 @@
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Scheduled Date</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Status</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Approved By</th>
-                        <th class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Actions</th>
+                        <!-- Admin-only column header -->
+                        <th x-show="role === 'Admin'" x-cloak class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Admin Actions</th>
+                        <!-- Director-only column header -->
+                        <th x-show="role === 'Director'" x-cloak class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Director Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($schedules as $schedule)
                     <tr class="hover:bg-slate-50 transition">
+                        <td class="px-5 py-3">
+                            <input type="checkbox" class="schedule-checkbox" value="{{ $schedule->id }}" 
+                                   {{ $schedule->status !== 'pending' ? 'disabled' : '' }}>
+                        </td>
                         <td class="px-5 py-3 text-sm font-mono text-slate-500">#{{ $schedule->id }}</td>
                         <td class="px-5 py-3">
                             <div class="font-medium text-slate-800">{{ $schedule->employee->name ?? 'N/A' }}</div>
@@ -199,44 +256,83 @@
                                 <span class="text-slate-400">—</span>
                             @endif
                         </td>
-                        <td class="px-5 py-3 text-center">
+                        <!-- Admin Actions Column -->
+                        <td x-show="role === 'Admin'" x-cloak class="px-5 py-3">
                             <div class="flex justify-center gap-2">
-                                <button onclick="viewSchedule({{ $schedule->id }})" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition">
+                                <button onclick="viewSchedule({{ $schedule->id }})" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition" title="View">
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 @if($schedule->status === 'pending')
-                                <button onclick="approveSchedule({{ $schedule->id }})" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition">
+                                <button onclick="approveSchedule({{ $schedule->id }})" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition" title="Approve">
                                     <i class="fas fa-check-circle"></i>
                                 </button>
-                                <button onclick="rejectSchedule({{ $schedule->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition">
+                                <button onclick="rejectSchedule({{ $schedule->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition" title="Reject">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                                @endif
+                                <button onclick="editSchedule({{ $schedule->id }})" class="text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg transition" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteSchedule({{ $schedule->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <!-- Director Actions Column -->
+                        <td x-show="role === 'Director'" x-cloak class="px-5 py-3">
+                            <div class="flex justify-center gap-2">
+                                <button onclick="viewSchedule({{ $schedule->id }})" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                @if($schedule->status === 'pending')
+                                <button onclick="approveSchedule({{ $schedule->id }})" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition" title="Approve">
+                                    <i class="fas fa-check-circle"></i>
+                                </button>
+                                <button onclick="rejectSchedule({{ $schedule->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition" title="Reject">
                                     <i class="fas fa-times-circle"></i>
                                 </button>
                                 @endif
                                 @if($schedule->status === 'approved')
-                                <button onclick="processNow({{ $schedule->id }})" class="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition">
+                                <button onclick="processNow({{ $schedule->id }})" class="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition" title="Process Now">
                                     <i class="fas fa-play-circle"></i>
                                 </button>
                                 @endif
-                                <button onclick="editSchedule({{ $schedule->id }})" class="text-amber-600 hover:bg-amber-50 p-1.5 rounded-lg transition">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button onclick="deleteSchedule({{ $schedule->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition">
-                                    <i class="fas fa-trash"></i>
-                                </button>
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-5 py-12 text-center text-slate-400">
+                        <td colspan="10" class="px-5 py-12 text-center text-slate-400">
                             <i class="fas fa-calendar-times text-4xl mb-3 block"></i>
                             <p>No payment schedules found</p>
-                            <button @click="openCreateModal()" class="text-indigo-600 hover:underline text-sm mt-2 inline-block">Create first schedule</button>
+                            <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }">
+                                <div x-show="role === 'Admin'">
+                                    <button @click="openCreateModal()" class="text-indigo-600 hover:underline text-sm mt-2 inline-block">Create first schedule</button>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
+        </div>
+        
+        <!-- Bulk Actions Bar - Shows when items are selected -->
+        <div id="bulkActionsBar" class="hidden bg-indigo-50 px-5 py-3 border-t border-indigo-200 flex justify-between items-center">
+            <div>
+                <span id="selectedCount" class="font-semibold text-indigo-700">0</span> schedules selected
+            </div>
+            <div class="flex gap-2">
+                <button onclick="bulkApprove()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-check-double mr-1"></i> Approve Selected
+                </button>
+                <button onclick="bulkDelete()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-trash mr-1"></i> Delete Selected
+                </button>
+                <button onclick="clearSelection()" class="border border-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-slate-50">
+                    Cancel
+                </button>
+            </div>
         </div>
         
         <!-- Pagination -->
@@ -330,10 +426,11 @@
 </div>
 
 <script>
+let selectedSchedules = [];
+
 function schedulesManager() {
     return {
         init() {
-            // Auto-hide flash messages
             setTimeout(() => {
                 const alerts = document.querySelectorAll('.flash-message');
                 alerts.forEach(alert => alert.style.display = 'none');
@@ -347,6 +444,96 @@ function schedulesManager() {
             document.getElementById('scheduleModal').classList.remove('hidden');
         }
     }
+}
+
+// Toggle select all checkboxes
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.schedule-checkbox:not([disabled])');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateBulkActionsBar();
+}
+
+// Update bulk actions bar
+function updateBulkActionsBar() {
+    const checkboxes = document.querySelectorAll('.schedule-checkbox:checked');
+    selectedSchedules = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    const count = selectedSchedules.length;
+    
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (count > 0) {
+        bulkBar.classList.remove('hidden');
+        selectedCount.innerText = count;
+    } else {
+        bulkBar.classList.add('hidden');
+    }
+}
+
+// Clear selection
+function clearSelection() {
+    const checkboxes = document.querySelectorAll('.schedule-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+    updateBulkActionsBar();
+}
+
+// Bulk approve schedules
+function bulkApprove() {
+    if (selectedSchedules.length === 0) {
+        alert('Please select at least one schedule to approve');
+        return;
+    }
+    
+    if(confirm(`Approve ${selectedSchedules.length} schedule(s)?`)) {
+        fetch('/salary/schedules/bulk-approve', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: selectedSchedules })
+        }).then(response => response.json())
+          .then(data => {
+              if(data.success) {
+                  location.reload();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          });
+    }
+}
+
+// Bulk delete schedules
+function bulkDelete() {
+    if (selectedSchedules.length === 0) {
+        alert('Please select at least one schedule to delete');
+        return;
+    }
+    
+    if(confirm(`Delete ${selectedSchedules.length} schedule(s)? This action cannot be undone.`)) {
+        fetch('/salary/schedules/bulk-delete', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: selectedSchedules })
+        }).then(response => response.json())
+          .then(data => {
+              if(data.success) {
+                  location.reload();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          });
+    }
+}
+
+// Export schedules
+function exportSchedules() {
+    window.location.href = '{{ route("salary.schedules.index") }}?export=true&' + new URLSearchParams(window.location.search).toString();
 }
 
 // Form submission
@@ -517,15 +704,25 @@ function closeModal() {
 function closeViewModal() {
     document.getElementById('viewScheduleModal').classList.add('hidden');
 }
+
+// Add event listeners to checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.schedule-checkbox');
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateBulkActionsBar);
+    });
+});
 </script>
 
 @push('styles')
 <style>
-    table { min-width: 1000px; }
+    table { min-width: 1100px; }
     .pagination { display: flex; justify-content: center; gap: 0.5rem; }
     .pagination .page-item { list-style: none; }
     .pagination .page-link { padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: white; border: 1px solid #e2e8f0; }
     .pagination .active .page-link { background: #4f46e5; color: white; border-color: #4f46e5; }
+    [x-cloak] { display: none !important; }
 </style>
 @endpush
+
 @endsection
