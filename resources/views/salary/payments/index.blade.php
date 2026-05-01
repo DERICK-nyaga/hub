@@ -5,7 +5,7 @@
 @section('content')
 <div x-data="paymentsManager()" x-init="init()" class="space-y-6">
     
-    <!-- Page Header -->
+    <!-- Page Header with Role-based Buttons -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -15,9 +15,24 @@
             <p class="text-slate-500 text-sm mt-1">Manage payroll, approvals, and payment history</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('salary.payments.create') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
-                <i class="fas fa-plus-circle"></i> New Payment
-            </a>
+            <!-- New Payment Button - Admin Only -->
+            <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }"
+                 x-on:roleChanged.window="role = $event.detail.role">
+                <div x-show="role === 'Admin'" x-cloak>
+                    <a href="{{ route('salary.payments.create') }}" 
+                       class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+                        <i class="fas fa-plus-circle"></i> New Payment
+                    </a>
+                </div>
+                <!-- Director gets a different button -->
+                <div x-show="role === 'Director'" x-cloak>
+                    <button class="bg-indigo-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+                        <i class="fas fa-check-double"></i> Bulk Approve
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Export Button - Visible to Both Roles -->
             <button @click="exportData()" class="bg-indigo-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
                 <i class="fas fa-download"></i> Export
             </button>
@@ -60,6 +75,33 @@
                     <p class="text-2xl font-bold text-slate-800 mt-1">KES {{ number_format($avgPayment ?? 0, 2) }}</p>
                 </div>
                 <div class="bg-blue-100 p-2 rounded-lg"><i class="fas fa-chart-line text-blue-600 text-xl"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role-based Info Banner -->
+    <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }"
+         x-on:roleChanged.window="role = $event.detail.role">
+        
+        <!-- Admin Banner -->
+        <div x-show="role === 'Admin'" x-cloak class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-lg mb-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-crown text-indigo-600 text-xl"></i>
+                <div>
+                    <p class="font-semibold text-indigo-800">Administrator Access</p>
+                    <p class="text-sm text-indigo-600">You have full access to create, edit, and delete payments.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Director Banner -->
+        <div x-show="role === 'Director'" x-cloak class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg mb-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-star-of-life text-amber-600 text-xl"></i>
+                <div>
+                    <p class="font-semibold text-amber-800">Director Access</p>
+                    <p class="text-sm text-amber-600">You can review, approve, and process payments.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -108,8 +150,10 @@
         </form>
     </div>
 
-    <!-- Payments Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <!-- Payments Table with Role-based Actions -->
+    <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }"
+         x-on:roleChanged.window="role = $event.detail.role"
+         class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-slate-50 border-b border-slate-200">
@@ -122,7 +166,10 @@
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Method</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Status</th>
-                        <th class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Actions</th>
+                        <!-- Admin-only column header -->
+                        <th x-show="role === 'Admin'" x-cloak class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Admin Actions</th>
+                        <!-- Director-only column header -->
+                        <th x-show="role === 'Director'" x-cloak class="px-5 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Director Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -183,20 +230,40 @@
                                 {{ str_replace('_', ' ', ucfirst($payment->status)) }}
                             </span>
                         </td>
-                        <td class="px-5 py-3 text-center">
+                        <!-- Admin Actions Column -->
+                        <td x-show="role === 'Admin'" x-cloak class="px-5 py-3">
                             <div class="flex justify-center gap-2">
-                                <button onclick="viewPayment({{ $payment->id }})" class="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition">
+                                <button onclick="viewPayment({{ $payment->id }})" class="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition" title="View">
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 @if($payment->status === 'pending_approval')
-                                <button onclick="approvePayment({{ $payment->id }})" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition">
+                                <button onclick="editPayment({{ $payment->id }})" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deletePayment({{ $payment->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition" title="Delete">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                @endif
+                                <button onclick="printReceipt({{ $payment->id }})" class="text-slate-500 hover:bg-slate-50 p-1.5 rounded-lg transition" title="Print">
+                                    <i class="fas fa-print"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <!-- Director Actions Column -->
+                        <td x-show="role === 'Director'" x-cloak class="px-5 py-3">
+                            <div class="flex justify-center gap-2">
+                                <button onclick="viewPayment({{ $payment->id }})" class="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-lg transition" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                @if($payment->status === 'pending_approval')
+                                <button onclick="approvePayment({{ $payment->id }})" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition" title="Approve">
                                     <i class="fas fa-check-circle"></i>
                                 </button>
-                                <button onclick="rejectPayment({{ $payment->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition">
+                                <button onclick="rejectPayment({{ $payment->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition" title="Reject">
                                     <i class="fas fa-times-circle"></i>
                                 </button>
                                 @endif
-                                <button onclick="printReceipt({{ $payment->id }})" class="text-slate-500 hover:bg-slate-50 p-1.5 rounded-lg transition">
+                                <button onclick="printReceipt({{ $payment->id }})" class="text-slate-500 hover:bg-slate-50 p-1.5 rounded-lg transition" title="Print">
                                     <i class="fas fa-print"></i>
                                 </button>
                             </div>
@@ -204,10 +271,14 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="px-5 py-12 text-center text-slate-400">
+                        <td colspan="10" class="px-5 py-12 text-center text-slate-400">
                             <i class="fas fa-inbox text-4xl mb-3 block"></i>
                             <p>No payment records found</p>
-                            <a href="{{ route('salary.payments.create') }}" class="text-indigo-600 hover:underline text-sm mt-2 inline-block">Create first payment</a>
+                            <div x-data="{ role: localStorage.getItem('user_role') || 'Admin' }">
+                                <div x-show="role === 'Admin'">
+                                    <a href="{{ route('salary.payments.create') }}" class="text-indigo-600 hover:underline text-sm mt-2 inline-block">Create first payment</a>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     @endforelse
@@ -307,8 +378,44 @@ function approvePayment(id) {
 
 function rejectPayment(id) {
     if(confirm('Reject this payment?')) {
-        // Implement reject logic
-        alert('Reject functionality - implement via your controller');
+        fetch(`/salary/payments/${id}/reject`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        }).then(response => response.json())
+          .then(data => {
+              if(data.success) {
+                  location.reload();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          });
+    }
+}
+
+function editPayment(id) {
+    window.location.href = `/salary/payments/${id}/edit`;
+}
+
+function deletePayment(id) {
+    if(confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
+        fetch(`/salary/payments/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if(data.success) {
+                  location.reload();
+              } else {
+                  alert('Error: ' + data.message);
+              }
+          });
     }
 }
 
@@ -324,6 +431,11 @@ function printReceipt(id) {
     .pagination .page-item { list-style: none; }
     .pagination .page-link { padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: white; border: 1px solid #e2e8f0; }
     .pagination .active .page-link { background: #4f46e5; color: white; border-color: #4f46e5; }
+    
+    /* Smooth transitions for role-based elements */
+    [x-cloak] { display: none !important; }
+    .role-transition { transition: all 0.3s ease; }
 </style>
 @endpush
+
 @endsection
