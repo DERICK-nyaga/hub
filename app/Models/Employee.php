@@ -30,6 +30,50 @@ class Employee extends Model
         'leave_end_date',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // When an employee is created
+        static::created(function ($employee) {
+            $employee->syncToSalaryTable();
+        });
+        
+        // When an employee is updated
+        static::updated(function ($employee) {
+            $employee->syncToSalaryTable();
+        });
+        
+        // When an employee is deleted
+        static::deleted(function ($employee) {
+            $employee->removeFromSalaryTable();
+        });
+    }
+    
+    // Sync to salary_employees table
+    public function syncToSalaryTable()
+    {
+        \App\Models\SalaryEmployee::updateOrCreate(
+            ['phone' => $this->phone], // Match by phone number
+            [
+                'name' => $this->full_name,
+                'phone' => $this->phone,
+                'position' => $this->position,
+                'station' => $this->station?->name ?? 'Main Office',
+                'status' => $this->status,
+                'base_salary' => $this->salary,
+                'bank_account' => $this->bank_account ?? null,
+                'mpesa_number' => $this->phone,
+            ]
+        );
+    }
+    
+    // Remove from salary_employees when employee is deleted
+    public function removeFromSalaryTable()
+    {
+        \App\Models\SalaryEmployee::where('phone', $this->phone)->delete();
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(OrderNumber::class);
@@ -41,9 +85,9 @@ class Employee extends Model
     }
 
     public function getTotalDeductionsAttribute()
-        {
-            return $this->deductions()->sum('amount');
-        }
+    {
+        return $this->deductions()->sum('amount');
+    }
 
     public function getNetSalaryAttribute()
     {
@@ -66,7 +110,7 @@ class Employee extends Model
         return $this->deductionBalance()->firstOrCreate([], ['balance' => 0])->balance;
     }
 
-        public function getFullNameAttribute(): string
+    public function getFullNameAttribute(): string
     {
         return $this->first_name . ' ' . $this->last_name;
     }
