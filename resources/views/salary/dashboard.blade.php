@@ -1,4 +1,3 @@
-{{-- resources/views/salary/payments/history.blade.php --}}
 @extends('layouts.salary-app')
 
 @section('title', 'Payment History')
