@@ -9,7 +9,10 @@ class CreateSalaryPaymentsTable extends Migration
     {
         Schema::create('salary_payments', function (Blueprint $table) {
             $table->id();
-            $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
+            $table->foreign('employee_id')
+            ->references('id')
+            ->on('employees')
+            ->onDelete('cascade');
             $table->decimal('amount', 12, 2);
             $table->decimal('deductions_total', 12, 2)->default(0);
             $table->decimal('net_amount', 12, 2);
