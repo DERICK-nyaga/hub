@@ -40,12 +40,12 @@ class SalaryDashboardController extends Controller
         // Monthly summary for chart
         $monthlySummary = SalaryPayment::where('status', 'processed')
             ->select(
-                DB::raw('DATE_FORMAT(payment_date, "%b") as month'),
+                DB::raw("TO_CHAR(payment_date, 'Mon') as month"),
                 DB::raw('SUM(net_amount) as total')
             )
             ->whereYear('payment_date', now()->year)
-            ->groupBy('month')
-            ->orderBy('payment_date')
+            ->groupBy(DB::raw("TO_CHAR(payment_date, 'Mon')"), DB::raw("EXTRACT(MONTH FROM payment_date)"))
+            ->orderBy(DB::raw("EXTRACT(MONTH FROM payment_date)"))
             ->get();
         
         // Pending lists for quick approval
