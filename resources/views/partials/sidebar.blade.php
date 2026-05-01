@@ -134,7 +134,7 @@
             </li>
             
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="{{ route('salary.dashboard') }}">
                     <i class="fas fa-cog me-2"></i>
                     <span>Settings</span>
                 </a>

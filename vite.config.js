@@ -18,6 +18,8 @@ export default defineConfig({
                 'resources/js/deductions.js',
                 'resources/js/employee-statuses.js',
                 'resources/js/airtime.js',
+                'resources/css/salary-app.css',
+                'resources/js/salary-app.js',
             ],
             refresh: true,
         }),
