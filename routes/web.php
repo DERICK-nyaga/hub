@@ -118,6 +118,22 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
         Route::get('history', [SalaryPaymentController::class, 'history'])->name('history');
         Route::get('history/chart-data', [SalaryPaymentController::class, 'chartData'])->name('history.chart');
         Route::get('payments/{payment}/receipt', [SalaryPaymentController::class, 'receipt'])->name('payments.receipt');
+
+        Route::post('schedules/bulk-approve', [SalaryScheduleController::class, 'bulkApprove'])->name('schedules.bulk-approve');
+        Route::post('schedules/bulk-delete', [SalaryScheduleController::class, 'bulkDelete'])->name('schedules.bulk-delete');
+        Route::get('schedules/export', [SalaryScheduleController::class, 'export'])->name('schedules.export');
+
+        Route::delete('payments/{id}', [SalaryPaymentController::class, 'destroy'])->name('payments.destroy');
+        Route::post('history/clear', [SalaryPaymentController::class, 'clearHistory'])->name('history.clear');
+
+        // Pending approvals routes
+        Route::get('pending-approvals', [SalaryPaymentController::class, 'getPendingApprovals'])->name('pending.approvals');
+        Route::get('pending-count', [SalaryPaymentController::class, 'getPendingCount'])->name('pending.count');
+
+        // Reject routes
+        Route::post('payments/{id}/reject', [SalaryPaymentController::class, 'reject'])->name('payments.reject');
+        Route::post('deductions/{id}/reject', [SalaryDeductionController::class, 'reject'])->name('deductions.reject');
+        Route::post('schedules/{id}/reject', [SalaryScheduleController::class, 'reject'])->name('schedules.reject');
     });
 
     // Links managementroutes 
@@ -486,3 +502,27 @@ Route::get('/', function () {
     Route::get('/payments/station-details/{stationId}', [PaymentController::class, 'showStationDetails'])
     ->name('payments.station.details');
     Route::get('/station/{stationId}', [PaymentController::class, 'stationPayments'])->name('station');
+
+    Route::get('/sync-employees', function () {
+    $employees = App\Models\Employee::all();
+    $count = 0;
+    
+    foreach ($employees as $employee) {
+        App\Models\SalaryEmployee::updateOrCreate(
+            ['phone' => $employee->phone],
+            [
+                'name' => $employee->full_name ?? $employee->first_name . ' ' . $employee->last_name,
+                'phone' => $employee->phone,
+                'position' => $employee->position,
+                'station' => $employee->station?->name ?? 'Main Office',
+                'status' => $employee->status,
+                'base_salary' => $employee->salary,
+                'bank_account' => $employee->bank_account ?? null,
+                'mpesa_number' => $employee->phone,
+            ]
+        );
+        $count++;
+    }
+    
+    return "Successfully synced {$count} employees!";
+});
