@@ -1,5 +1,4 @@
 <?php
-// app/Controllers/Salary/SalaryPaymentController.php
 
 namespace App\Controllers\Salary;
 
@@ -8,6 +7,7 @@ use App\Models\Employee;
 use App\Models\SalaryEmployee;
 use App\Models\SalaryPayment;
 use App\Models\SalaryDeduction;
+use App\Models\SalaryPaymentSchedule;
 use App\Models\SalaryApprovalLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,26 +59,20 @@ class SalaryPaymentController extends Controller
     
     public function create()
     {
-        // Use your existing Employee model
         $employees = Employee::where('status', 'active')->get();
         return view('salary.payments.create', compact('employees'));
     }
     
-    /**
-     * Sync employee data from main employees table to salary_employees table
-     */
     private function syncEmployeeToSalaryTable($employeeId)
     {
-        // Get employee from main table
         $mainEmployee = Employee::find($employeeId);
         
         if (!$mainEmployee) {
             return null;
         }
         
-        // Sync or create in salary_employees table
         $salaryEmployee = SalaryEmployee::updateOrCreate(
-            ['phone' => $mainEmployee->phone], // Match by phone
+            ['phone' => $mainEmployee->phone],
             [
                 'name' => $mainEmployee->full_name ?? $mainEmployee->first_name . ' ' . $mainEmployee->last_name,
                 'phone' => $mainEmployee->phone,
@@ -97,7 +91,7 @@ class SalaryPaymentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id',  // From your main employees table
+            'employee_id' => 'required|exists:employees,id',
             'type' => 'required|in:regular,advance,adjustment',
             'amount' => 'required|numeric|min:0',
             'payment_method' => 'required|in:mpesa,bank_transfer',
@@ -108,30 +102,19 @@ class SalaryPaymentController extends Controller
         DB::beginTransaction();
         
         try {
-            // FIRST: Sync the employee to salary_employees table
             $salaryEmployee = $this->syncEmployeeToSalaryTable($validated['employee_id']);
             
             if (!$salaryEmployee) {
                 throw new \Exception('Employee not found in main table');
             }
             
-            // Get main employee for deduction calculation
             $mainEmployee = Employee::find($validated['employee_id']);
-            
-            // Calculate deductions from your existing deduction system
             $deductionsTotal = $mainEmployee->deduction_balance ?? 0;
-            
-            // If you have a deduction_transactions table:
-            // $deductionsTotal = $mainEmployee->deductionTransactions()->sum('amount') ?? 0;
-            
             $netAmount = $validated['amount'] - $deductionsTotal;
-            
-            // Generate transaction reference
             $reference = 'PAY-' . strtoupper(uniqid());
             
-            // Create payment using the salary_employee ID
             $payment = SalaryPayment::create([
-                'employee_id' => $salaryEmployee->id,  // Use the synced salary_employee ID
+                'employee_id' => $salaryEmployee->id,
                 'amount' => $validated['amount'],
                 'deductions_total' => $deductionsTotal,
                 'net_amount' => $netAmount,
@@ -143,7 +126,6 @@ class SalaryPaymentController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
             
-            // Log approval request
             SalaryApprovalLog::create([
                 'approvable_type' => SalaryPayment::class,
                 'approvable_id' => $payment->id,
@@ -155,7 +137,7 @@ class SalaryPaymentController extends Controller
             DB::commit();
             
             return redirect()->route('salary.payments.index')
-                ->with('success', 'Payment request created successfully. Employee data synced automatically. Waiting for approval.');
+                ->with('success', 'Payment request created successfully. Waiting for approval.');
                 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -163,14 +145,12 @@ class SalaryPaymentController extends Controller
         }
     }
     
-    // API endpoint for viewing single payment
     public function show($id)
     {
         $payment = SalaryPayment::with('employee')->findOrFail($id);
         return response()->json($payment);
     }
 
-    // Print receipt method
     public function print($id)
     {
         $payment = SalaryPayment::with('employee')->findOrFail($id);
@@ -196,7 +176,6 @@ class SalaryPaymentController extends Controller
                 'approved_at' => now(),
             ]);
             
-            // Process automatic payment
             $this->processAutomaticPayment($payment);
             
             SalaryApprovalLog::create([
@@ -220,16 +199,13 @@ class SalaryPaymentController extends Controller
     
     private function processAutomaticPayment(SalaryPayment $payment)
     {
-        // Update status to processed
         $payment->update(['status' => 'processed']);
         
-        // Get the main employee to update deduction balance
         $salaryEmployee = SalaryEmployee::find($payment->employee_id);
         if ($salaryEmployee) {
             $mainEmployee = Employee::where('phone', $salaryEmployee->phone)->first();
             if ($mainEmployee && $payment->deductions_total > 0) {
                 // Update deduction balance if needed
-                // $mainEmployee->update(['deduction_balance' => 0]);
             }
         }
         
@@ -242,7 +218,7 @@ class SalaryPaymentController extends Controller
     }
     
     /**
-     * Display payment history with filters and summaries
+     * Display payment history with filters and summaries - POSTGRESQL COMPATIBLE
      */
     public function history(Request $request)
     {
@@ -252,11 +228,8 @@ class SalaryPaymentController extends Controller
         $averagePayment = 0;
         $totalDeductions = 0;
         
-        // Build the query for processed payments
-        $query = SalaryPayment::with('employee')
-            ->where('status', 'processed');
+        $query = SalaryPayment::with('employee')->where('status', 'processed');
         
-        // Apply filters
         if ($request->year) {
             $query->whereYear('payment_date', $request->year);
         }
@@ -285,15 +258,16 @@ class SalaryPaymentController extends Controller
         $hasProcessedPayments = SalaryPayment::where('status', 'processed')->exists();
         
         if ($hasProcessedPayments) {
+            // PostgreSQL-compatible date formatting
             $summary = SalaryPayment::where('status', 'processed')
                 ->select(
-                    DB::raw('DATE_FORMAT(payment_date, "%Y-%m") as month'),
+                    DB::raw("TO_CHAR(payment_date, 'YYYY-MM') as month"),
                     DB::raw('SUM(net_amount) as total_amount'),
                     DB::raw('COUNT(*) as total_count'),
                     DB::raw('AVG(net_amount) as average_amount')
                 )
-                ->groupBy('month')
-                ->orderBy('month', 'desc')
+                ->groupBy(DB::raw("TO_CHAR(payment_date, 'YYYY-MM')"))
+                ->orderBy(DB::raw("TO_CHAR(payment_date, 'YYYY-MM')"), 'desc')
                 ->get();
             
             $yearlyTotal = SalaryPayment::whereYear('payment_date', date('Y'))
@@ -391,7 +365,6 @@ class SalaryPaymentController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    // Delete single transaction
     public function destroy($id)
     {
         $payment = SalaryPayment::findOrFail($id);
@@ -400,7 +373,6 @@ class SalaryPaymentController extends Controller
         return response()->json(['success' => true]);
     }
 
-    // Clear all history (Admin only)
     public function clearHistory()
     {
         SalaryPayment::truncate();
@@ -412,7 +384,6 @@ class SalaryPaymentController extends Controller
     {
         $pendingItems = [];
         
-        // Get pending payments
         $pendingPayments = SalaryPayment::with('employee')
             ->where('status', 'pending_approval')
             ->get();
@@ -429,7 +400,6 @@ class SalaryPaymentController extends Controller
             ];
         }
         
-        // Get pending deductions (if table exists)
         if (class_exists('App\Models\SalaryDeduction')) {
             $pendingDeductions = SalaryDeduction::with('employee')
                 ->where('status', 'pending')
@@ -448,7 +418,6 @@ class SalaryPaymentController extends Controller
             }
         }
         
-        // Get pending schedules (if table exists)
         if (class_exists('App\Models\SalaryPaymentSchedule')) {
             $pendingSchedules = SalaryPaymentSchedule::with('employee')
                 ->where('status', 'pending')
@@ -467,7 +436,6 @@ class SalaryPaymentController extends Controller
             }
         }
         
-        // Sort by created_at descending
         usort($pendingItems, function($a, $b) {
             return strtotime($b['created_at']) - strtotime($a['created_at']);
         });
@@ -511,5 +479,4 @@ class SalaryPaymentController extends Controller
         
         return response()->json(['success' => true]);
     }
-    
 }
