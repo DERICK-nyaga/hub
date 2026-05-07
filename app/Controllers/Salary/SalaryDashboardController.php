@@ -9,13 +9,13 @@ use App\Models\SalaryDeduction;
 use App\Models\SalaryPaymentSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SalaryDashboardController extends Controller
 {
-    
     public function index()
     {
-        // Monthly stats
+        // Monthly stats (works on both MySQL and PostgreSQL)
         $monthlyStats = SalaryPayment::whereYear('payment_date', now()->year)
             ->whereMonth('payment_date', now()->month)
             ->where('status', 'processed')
@@ -37,16 +37,8 @@ class SalaryDashboardController extends Controller
             ->take(10)
             ->get();
         
-        // Monthly summary for chart
-        $monthlySummary = SalaryPayment::where('status', 'processed')
-            ->select(
-                DB::raw("TO_CHAR(payment_date, 'Mon') as month"),
-                DB::raw('SUM(net_amount) as total')
-            )
-            ->whereYear('payment_date', now()->year)
-            ->groupBy(DB::raw("TO_CHAR(payment_date, 'Mon')"), DB::raw("EXTRACT(MONTH FROM payment_date)"))
-            ->orderBy(DB::raw("EXTRACT(MONTH FROM payment_date)"))
-            ->get();
+        // Monthly summary for chart - DATABASE AGNOSTIC
+        $monthlySummary = $this->getMonthlySummary(now()->year);
         
         // Pending lists for quick approval
         $pendingPaymentsList = SalaryPayment::with('employee')
@@ -66,5 +58,33 @@ class SalaryDashboardController extends Controller
             'pendingDeductions', 'recentTransactions', 'monthlySummary',
             'pendingPaymentsList', 'pendingDeductionsList'
         ));
+    }
+    
+    /**
+     * Get monthly summary - Database agnostic (works on MySQL & PostgreSQL)
+     */
+    private function getMonthlySummary($year)
+    {
+        $payments = SalaryPayment::where('status', 'processed')
+            ->whereYear('payment_date', $year)
+            ->get();
+        
+        // Group by month using PHP (database agnostic)
+        $monthlyData = [];
+        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        foreach ($months as $index => $month) {
+            $monthNumber = $index + 1;
+            $total = $payments->filter(function($payment) use ($monthNumber) {
+                return $payment->payment_date->month == $monthNumber;
+            })->sum('net_amount');
+            
+            $monthlyData[] = (object)[
+                'month' => $month,
+                'total' => $total
+            ];
+        }
+        
+        return collect($monthlyData);
     }
 }

@@ -129,6 +129,8 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
         // Pending approvals routes
         Route::get('pending-approvals', [SalaryPaymentController::class, 'getPendingApprovals'])->name('pending.approvals');
         Route::get('pending-count', [SalaryPaymentController::class, 'getPendingCount'])->name('pending.count');
+        Route::post('/salary/payments/{id}/approve', [SalaryPaymentController::class, 'approve'])
+        ->name('salary.payments.approve');
 
         // Reject routes
         Route::post('payments/{id}/reject', [SalaryPaymentController::class, 'reject'])->name('payments.reject');

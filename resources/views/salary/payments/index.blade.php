@@ -256,10 +256,10 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 @if($payment->status === 'pending_approval')
-                                <button onclick="approvePayment({{ $payment->id }})" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition" title="Approve">
+                                <button onclick="approvePayment({{ $payment->id }}, event)" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition" title="Approve">
                                     <i class="fas fa-check-circle"></i>
                                 </button>
-                                <button onclick="rejectPayment({{ $payment->id }})" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition" title="Reject">
+                                <button onclick="rejectPayment({{ $payment->id }}, event)" class="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition" title="Reject">
                                     <i class="fas fa-times-circle"></i>
                                 </button>
                                 @endif
@@ -309,119 +309,246 @@
 </div>
 
 <script>
-function paymentsManager() {
-    return {
-        init() {
-            // Auto-hide flash messages
-            setTimeout(() => {
-                const alerts = document.querySelectorAll('.flash-message');
-                alerts.forEach(alert => alert.style.display = 'none');
-            }, 5000);
-        },
-        exportData() {
-            window.location.href = '{{ route("salary.payments.index") }}?export=true&' + new URLSearchParams(window.location.search).toString();
+    function paymentsManager() {
+        return {
+            init() {
+                var self = this;  // Add this to fix scope issues
+                setTimeout(function() {
+                    var alerts = document.querySelectorAll('.flash-message');
+                    alerts.forEach(function(alert) {
+                        alert.style.display = 'none';
+                    });
+                }, 5000);
+            },
+            exportData: function() {  // Changed method syntax
+                window.location.href = '{{ route("salary.payments.index") }}?export=true&' + new URLSearchParams(window.location.search).toString();
+            }
         }
     }
-}
 
-// View payment details
-function viewPayment(id) {
-    fetch(`/salary/payments/${id}`)
-        .then(response => response.json())
-        .then(data => {
-            const content = `
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-xs text-slate-500">Transaction Ref</label><p class="font-mono text-sm">${data.transaction_reference}</p></div>
-                        <div><label class="text-xs text-slate-500">Payment Date</label><p class="font-semibold">${new Date(data.payment_date).toLocaleDateString()}</p></div>
-                        <div><label class="text-xs text-slate-500">Employee</label><p class="font-semibold">${data.employee?.name}</p></div>
-                        <div><label class="text-xs text-slate-500">Payment Method</label><p>${data.payment_method.toUpperCase()}</p></div>
-                        <div><label class="text-xs text-slate-500">Gross Amount</label><p class="text-lg font-bold">KES ${Number(data.amount).toLocaleString()}</p></div>
-                        <div><label class="text-xs text-slate-500">Deductions</label><p class="text-red-600">-KES ${Number(data.deductions_total).toLocaleString()}</p></div>
-                        <div class="col-span-2 border-t pt-3"><label class="text-sm font-bold">Net Payment</label><p class="text-2xl font-bold text-emerald-600">KES ${Number(data.net_amount).toLocaleString()}</p></div>
-                        ${data.notes ? `<div class="col-span-2"><label class="text-xs text-slate-500">Notes</label><p class="text-sm">${data.notes}</p></div>` : ''}
+    function viewPayment(id) {
+        fetch('/salary/payments/' + id)  // Changed to single quotes and concatenation
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                var content = `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-xs text-slate-500">Transaction Ref</label><p class="font-mono text-sm">${data.transaction_reference}</p></div>
+                            <div><label class="text-xs text-slate-500">Payment Date</label><p class="font-semibold">${new Date(data.payment_date).toLocaleDateString()}</p></div>
+                            <div><label class="text-xs text-slate-500">Employee</label><p class="font-semibold">${data.employee ? data.employee.name : 'N/A'}</p></div>
+                            <div><label class="text-xs text-slate-500">Payment Method</label><p>${data.payment_method ? data.payment_method.toUpperCase() : 'N/A'}</p></div>
+                            <div><label class="text-xs text-slate-500">Gross Amount</label><p class="text-lg font-bold">KES ${Number(data.amount).toLocaleString()}</p></div>
+                            <div><label class="text-xs text-slate-500">Deductions</label><p class="text-red-600">-KES ${Number(data.deductions_total).toLocaleString()}</p></div>
+                            <div class="col-span-2 border-t pt-3"><label class="text-sm font-bold">Net Payment</label><p class="text-2xl font-bold text-emerald-600">KES ${Number(data.net_amount).toLocaleString()}</p></div>
+                            ${data.notes ? `<div class="col-span-2"><label class="text-xs text-slate-500">Notes</label><p class="text-sm">${data.notes}</p></div>` : ''}
+                        </div>
+                        ${data.status === 'processed' ? `<div class="bg-emerald-50 p-3 rounded-lg text-center"><i class="fas fa-check-circle text-emerald-600"></i> Payment processed successfully</div>` : ''}
                     </div>
-                    ${data.status === 'processed' ? `<div class="bg-emerald-50 p-3 rounded-lg text-center"><i class="fas fa-check-circle text-emerald-600"></i> Payment processed successfully</div>` : ''}
-                </div>
-            `;
-            document.getElementById('paymentDetailsContent').innerHTML = content;
-            document.getElementById('viewPaymentModal').classList.remove('hidden');
-        })
-        .catch(error => {
-            alert('Error loading payment details');
-        });
-}
+                `;
+                document.getElementById('paymentDetailsContent').innerHTML = content;
+                document.getElementById('viewPaymentModal').classList.remove('hidden');
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                alert('Error loading payment details');
+            });
+    }
 
-function closeModal() {
-    document.getElementById('viewPaymentModal').classList.add('hidden');
-}
+    function closeModal() {
+        document.getElementById('viewPaymentModal').classList.add('hidden');
+    }
 
-function approvePayment(id) {
+function approvePayment(id, event) {
+    if(event) event.preventDefault();
+    
+    console.log('Approve button clicked for payment ID:', id); // Debug log
+    
     if(confirm('Approve this payment? It will be processed automatically.')) {
-        fetch(`/salary/payments/${id}/approve`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({})
-        }).then(response => response.json())
-          .then(data => {
-              if(data.success) {
-                  location.reload();
-              } else {
-                  alert('Error: ' + data.message);
-              }
-          });
-    }
-}
-
-function rejectPayment(id) {
-    if(confirm('Reject this payment?')) {
-        fetch(`/salary/payments/${id}/reject`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({})
-        }).then(response => response.json())
-          .then(data => {
-              if(data.success) {
-                  location.reload();
-              } else {
-                  alert('Error: ' + data.message);
-              }
-          });
-    }
-}
-
-function editPayment(id) {
-    window.location.href = `/salary/payments/${id}/edit`;
-}
-
-function deletePayment(id) {
-    if(confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
-        fetch(`/salary/payments/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
+        var btn = event ? event.target.closest('button') : document.querySelector('button[onclick*="approvePayment(' + id + '"]');
+        if(btn) {
+            var originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+        }
+        
+        // Get CSRF token
+        var csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if(!csrfToken) {
+            console.error('CSRF token meta tag not found!');
+            showNotification('CSRF token missing. Please refresh the page.', 'error');
+            if(btn) {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
             }
-        }).then(response => response.json())
-          .then(data => {
-              if(data.success) {
-                  location.reload();
-              } else {
-                  alert('Error: ' + data.message);
-              }
-          });
+            return;
+        }
+        
+        console.log('Sending approve request for payment ID:', id);
+        
+        fetch('/salary/payments/' + id + '/approve', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken.content,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin', // Important for session handling
+            body: JSON.stringify({})
+        })
+        .then(function(response) {
+            console.log('Response status:', response.status);
+            
+            if (response.status === 404) {
+                throw new Error('Route not found. Please check your routes.');
+            }
+            if (response.status === 419) {
+                throw new Error('Session expired. Please refresh the page.');
+            }
+            if (response.status === 500) {
+                throw new Error('Server error. Check Laravel logs.');
+            }
+            if (!response.ok) {
+                return response.text().then(function(text) {
+                    console.error('Error response:', text);
+                    throw new Error('HTTP ' + response.status + ': ' + text.substring(0, 100));
+                });
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            console.log('Response data:', data);
+            if(data.success) {
+                showNotification('Payment approved successfully!', 'success');
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showNotification('Error: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(function(error) {
+            console.error('Approval error:', error);
+            showNotification('Network error: ' + error.message, 'error');
+        })
+        .finally(function() {
+            if(btn) {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        });
     }
 }
 
-function printReceipt(id) {
-    window.open(`/salary/payments/${id}/print`, '_blank');
-}
+    function rejectPayment(id, event) {
+        event.preventDefault();  // Add this
+        if(confirm('Reject this payment?')) {
+            var btn = event.target.closest('button');
+            if(!btn) return;
+            var originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+            
+            fetch('/salary/payments/' + id + '/reject', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({})
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(err) {
+                        throw new Error(err.message || 'HTTP ' + response.status);
+                    });
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if(data.success) {
+                    showNotification('Payment rejected successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    showNotification('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(function(error) {
+                console.error('Rejection error:', error);
+                showNotification('Network error: ' + error.message, 'error');
+            })
+            .finally(function() {
+                if(btn) {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }
+            });
+        }
+    }
+
+    function editPayment(id) {
+        window.location.href = '/salary/payments/' + id + '/edit';
+    }
+
+    function deletePayment(id) {
+        if(confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
+            fetch('/salary/payments/' + id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Delete failed with status: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if(data.success) {
+                    showNotification('Payment deleted successfully!', 'success');
+                    setTimeout(function() { location.reload(); }, 1500);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(function(error) {
+                console.error('Delete error:', error);
+                alert('Error deleting payment: ' + error.message);
+            });
+        }
+    }
+
+    function printReceipt(id) {
+        window.open('/salary/payments/' + id + '/print', '_blank');
+    }
+
+    function showNotification(message, type) {
+        type = type || 'info';
+        var notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ' + (
+            type === 'success' ? 'bg-green-500' : 
+            type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+        ) + ' text-white';
+        notification.style.zIndex = '9999';
+        notification.innerHTML = '<div class="flex items-center gap-2">' +
+            '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i>' +
+            '<span>' + message + '</span>' +
+            '</div>';
+        document.body.appendChild(notification);
+        setTimeout(function() { 
+            if(notification && notification.remove) {
+                notification.remove(); 
+            }
+        }, 3000);
+    }
+
+    // Debug function to test if JavaScript is loading
+    console.log('Salary payments script loaded successfully');
 </script>
 
 @push('styles')

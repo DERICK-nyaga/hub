@@ -20,6 +20,8 @@ export default defineConfig({
                 'resources/js/airtime.js',
                 'resources/css/salary-app.css',
                 'resources/js/salary-app.js',
+                'resources/css/sidebar-enhanced.css',
+                'resources/js/main-sidebar.js',
             ],
             refresh: true,
         }),
