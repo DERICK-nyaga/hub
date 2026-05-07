@@ -8,7 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    @vite(['resources/css/app.css', 'resources/css/dashboard.css', 'resources/css/employee-create.css', 'resources/css/fixedstyles.css', 'resources/css/modifiedstyles.css', 'resources/css/order-numbers.css', 'resources/css/sidebar.css', 'resources/js/sidebar.js', 'resources/js/payments.js', 'resources/js/app.js', 'resources/js/employee-balance.js', 'resources/js/deductions.js', 'resources/js/employee-statuses.js', 'resources/js/airtime.js'])    @stack('styles')
+    @vite(['resources/css/app.css', 'resources/css/dashboard.css', 'resources/css/employee-create.css', 'resources/css/fixedstyles.css', 'resources/css/modifiedstyles.css', 'resources/css/order-numbers.css', 'resources/css/sidebar.css', 'resources/js/sidebar.js', 'resources/js/payments.js', 'resources/js/app.js', 'resources/js/employee-balance.js', 'resources/js/deductions.js', 'resources/js/employee-statuses.js', 'resources/js/airtime.js'])
+    @stack('styles')
 </head>
 <body>
     @include('partials.sidebar')
