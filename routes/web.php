@@ -125,6 +125,31 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
 
         Route::delete('payments/{id}', [SalaryPaymentController::class, 'destroy'])->name('payments.destroy');
         Route::post('history/clear', [SalaryPaymentController::class, 'clearHistory'])->name('history.clear');
+        Route::get('/salary/history/chart-data', function(Request $request) {
+        $year = $request->get('year', date('Y'));
+        $months = [];
+        $amounts = [];
+        $counts = [];
+        
+        for ($i = 1; $i <= 12; $i++) {
+            $months[] = date('F', mktime(0, 0, 0, $i, 1));
+            
+            $stats = DB::table('payments')
+                ->whereYear('payment_date', $year)
+                ->whereMonth('payment_date', $i)
+                ->selectRaw('COALESCE(SUM(amount), 0) as total_amount, COUNT(*) as total_count')
+                ->first();
+                
+            $amounts[] = $stats->total_amount;
+            $counts[] = $stats->total_count;
+        }
+        
+        return response()->json([
+            'months' => $months,
+            'amounts' => $amounts,
+            'counts' => $counts
+        ]);
+    })->middleware('auth');
 
         // Pending approvals routes
         Route::get('pending-approvals', [SalaryPaymentController::class, 'getPendingApprovals'])->name('pending.approvals');
