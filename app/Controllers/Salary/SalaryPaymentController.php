@@ -157,53 +157,54 @@ class SalaryPaymentController extends Controller
         return view('salary.payments.print', compact('payment'));
     }
 
-public function approve($id, Request $request)
-{
-    try {
-        \Log::info('Approve payment attempt', ['payment_id' => $id]);
-        
-        $payment = SalaryPayment::with('employee')->find($id);
-        
-        if (!$payment) {
-            \Log::error('Payment not found', ['payment_id' => $id]);
+    public function approve($id, Request $request)
+    {
+        try {
+            \Log::info('Approve payment attempt', ['payment_id' => $id]);
+            
+            $payment = SalaryPayment::with('employee')->find($id);
+            
+            if (!$payment) {
+                \Log::error('Payment not found', ['payment_id' => $id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment not found'
+                ], 404);
+            }
+            
+            \Log::info('Payment found', [
+                'payment_id' => $payment->id,
+                'current_status' => $payment->status,
+                'employee_id' => $payment->employee_id
+            ]);
+            
+            // Update payment status
+            $payment->status = 'approved';
+            $payment->approved_at = now();
+            $payment->approved_by = auth()->id();
+            $payment->save();
+            
+            \Log::info('Payment approved successfully', ['payment_id' => $id]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment approved successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Payment approval error', [
+                'payment_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Payment not found'
-            ], 404);
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
-        
-        \Log::info('Payment found', [
-            'payment_id' => $payment->id,
-            'current_status' => $payment->status,
-            'employee_id' => $payment->employee_id
-        ]);
-        
-        // Update payment status
-        $payment->status = 'approved';
-        $payment->approved_at = now();
-        $payment->approved_by = auth()->id();
-        $payment->save();
-        
-        \Log::info('Payment approved successfully', ['payment_id' => $id]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment approved successfully'
-        ]);
-        
-    } catch (\Exception $e) {
-        \Log::error('Payment approval error', [
-            'payment_id' => $id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Server error: ' . $e->getMessage()
-        ], 500);
     }
-}
+    
     private function processAutomaticPayment(SalaryPayment $payment)
     {
         $payment->update(['status' => 'processed']);
@@ -224,88 +225,159 @@ public function approve($id, Request $request)
         ]);
     }
     
-public function history(Request $request)
-{
-    // Get monthly summary for chart
-    $summary = SalaryPayment::where('status', 'processed')
-        ->selectRaw('DATE_FORMAT(payment_date, "%Y-%m") as month, 
-                     SUM(net_amount) as total_amount, 
-                     COUNT(*) as total_count, 
-                     AVG(net_amount) as average_amount')
-        ->groupBy('month')
-        ->orderBy('month', 'desc')
-        ->get();
-    
-    // Get yearly totals
-    $yearlyTotal = SalaryPayment::where('status', 'processed')
-        ->whereYear('payment_date', date('Y'))
-        ->sum('net_amount');
-    
-    $totalTransactions = SalaryPayment::where('status', 'processed')->count();
-    
-    $averagePayment = SalaryPayment::where('status', 'processed')->avg('net_amount');
-    
-    $totalDeductions = SalaryPayment::where('status', 'processed')->sum('deductions_total');
-    
-    // Get paginated payments for the table
-    $payments = SalaryPayment::with('employee')
-        ->when($request->year, function($query, $year) {
-            return $query->whereYear('payment_date', $year);
-        })
-        ->when($request->month, function($query, $month) {
-            return $query->whereMonth('payment_date', $month);
-        })
-        ->when($request->type, function($query, $type) {
-            return $query->where('type', $type);
-        })
-        ->when($request->method, function($query, $method) {
-            return $query->where('payment_method', $method);
-        })
-        ->orderBy('payment_date', 'desc')
-        ->paginate(15);
-    
-    return view('salary.payments.history', compact(
-        'summary', 'yearlyTotal', 'totalTransactions', 
-        'averagePayment', 'totalDeductions', 'payments'
-    ));
-}
-
-// Method for chart data API endpoint
-public function chartData(Request $request)
-{
-    $year = $request->get('year', date('Y'));
-    
-    $data = SalaryPayment::where('status', 'processed')
-        ->whereYear('payment_date', $year)
-        ->selectRaw('DATE_FORMAT(payment_date, "%Y-%m") as month,
-                     DATE_FORMAT(payment_date, "%b") as month_name,
-                     SUM(net_amount) as total_amount,
-                     COUNT(*) as total_count')
-        ->groupBy('month', 'month_name')
-        ->orderBy('month', 'asc')
-        ->get();
-    
-    $months = [];
-    $amounts = [];
-    $counts = [];
-    
-    // Fill in all months (even those with no data)
-    for ($i = 1; $i <= 12; $i++) {
-        $monthName = date('M', mktime(0, 0, 0, $i, 1));
-        $monthKey = date('Y-m', mktime(0, 0, 0, $i, 1));
-        $months[] = $monthName;
+    /**
+     * Get database-agnostic date format expression
+     */
+    private function getDateFormatExpression($field, $format)
+    {
+        $driver = DB::connection()->getDriverName();
         
-        $found = $data->firstWhere('month', $monthKey);
-        $amounts[] = $found ? (float) $found->total_amount : 0;
-        $counts[] = $found ? (int) $found->total_count : 0;
+        if ($driver === 'pgsql') {
+            if ($format === 'Y-m') {
+                return "TO_CHAR({$field}, 'YYYY-MM')";
+            } elseif ($format === 'Mon') {
+                return "TO_CHAR({$field}, 'Mon')";
+            } elseif ($format === 'Y') {
+                return "EXTRACT(YEAR FROM {$field})";
+            } elseif ($format === 'm') {
+                return "EXTRACT(MONTH FROM {$field})";
+            }
+        } elseif ($driver === 'mysql') {
+            if ($format === 'Y-m') {
+                return "DATE_FORMAT({$field}, '%Y-%m')";
+            } elseif ($format === 'Mon') {
+                return "DATE_FORMAT({$field}, '%b')";
+            } elseif ($format === 'Y') {
+                return "YEAR({$field})";
+            } elseif ($format === 'm') {
+                return "MONTH({$field})";
+            }
+        } elseif ($driver === 'sqlite') {
+            if ($format === 'Y-m') {
+                return "strftime('%Y-%m', {$field})";
+            } elseif ($format === 'Mon') {
+                return "strftime('%m', {$field})";
+            } elseif ($format === 'Y') {
+                return "strftime('%Y', {$field})";
+            } elseif ($format === 'm') {
+                return "strftime('%m', {$field})";
+            }
+        }
+        
+        return $field;
     }
     
-    return response()->json([
-        'months' => $months,
-        'amounts' => $amounts,
-        'counts' => $counts
-    ]);
-}
+    public function history(Request $request)
+    {
+        $driver = DB::connection()->getDriverName();
+        
+        // Get monthly summary for chart - Database agnostic
+        if ($driver === 'pgsql') {
+            $summary = SalaryPayment::where('status', 'processed')
+                ->selectRaw("TO_CHAR(payment_date, 'YYYY-MM') as month, 
+                             SUM(net_amount) as total_amount, 
+                             COUNT(*) as total_count, 
+                             AVG(net_amount) as average_amount")
+                ->groupBy(DB::raw("TO_CHAR(payment_date, 'YYYY-MM')"))
+                ->orderBy(DB::raw("TO_CHAR(payment_date, 'YYYY-MM')"), 'desc')
+                ->get();
+        } else {
+            // MySQL and others
+            $summary = SalaryPayment::where('status', 'processed')
+                ->selectRaw('DATE_FORMAT(payment_date, "%Y-%m") as month, 
+                             SUM(net_amount) as total_amount, 
+                             COUNT(*) as total_count, 
+                             AVG(net_amount) as average_amount')
+                ->groupBy('month')
+                ->orderBy('month', 'desc')
+                ->get();
+        }
+        
+        // Get yearly totals
+        $yearlyTotal = SalaryPayment::where('status', 'processed')
+            ->whereYear('payment_date', date('Y'))
+            ->sum('net_amount');
+        
+        $totalTransactions = SalaryPayment::where('status', 'processed')->count();
+        
+        $averagePayment = SalaryPayment::where('status', 'processed')->avg('net_amount');
+        
+        $totalDeductions = SalaryPayment::where('status', 'processed')->sum('deductions_total');
+        
+        // Get paginated payments for the table
+        $payments = SalaryPayment::with('employee')
+            ->when($request->year, function($query, $year) {
+                return $query->whereYear('payment_date', $year);
+            })
+            ->when($request->month, function($query, $month) {
+                return $query->whereMonth('payment_date', $month);
+            })
+            ->when($request->type, function($query, $type) {
+                return $query->where('type', $type);
+            })
+            ->when($request->method, function($query, $method) {
+                return $query->where('payment_method', $method);
+            })
+            ->orderBy('payment_date', 'desc')
+            ->paginate(15);
+        
+        return view('salary.payments.history', compact(
+            'summary', 'yearlyTotal', 'totalTransactions', 
+            'averagePayment', 'totalDeductions', 'payments'
+        ));
+    }
+
+    // Method for chart data API endpoint - Fixed for PostgreSQL
+    public function chartData(Request $request)
+    {
+        $year = $request->get('year', date('Y'));
+        $driver = DB::connection()->getDriverName();
+        
+        // Database-agnostic query
+        if ($driver === 'pgsql') {
+            $data = SalaryPayment::where('status', 'processed')
+                ->whereYear('payment_date', $year)
+                ->selectRaw("TO_CHAR(payment_date, 'YYYY-MM') as month,
+                             TO_CHAR(payment_date, 'Mon') as month_name,
+                             SUM(net_amount) as total_amount,
+                             COUNT(*) as total_count")
+                ->groupBy(DB::raw("TO_CHAR(payment_date, 'YYYY-MM')"), DB::raw("TO_CHAR(payment_date, 'Mon')"))
+                ->orderBy(DB::raw("TO_CHAR(payment_date, 'YYYY-MM')"), 'asc')
+                ->get();
+        } else {
+            // MySQL and others
+            $data = SalaryPayment::where('status', 'processed')
+                ->whereYear('payment_date', $year)
+                ->selectRaw('DATE_FORMAT(payment_date, "%Y-%m") as month,
+                             DATE_FORMAT(payment_date, "%b") as month_name,
+                             SUM(net_amount) as total_amount,
+                             COUNT(*) as total_count')
+                ->groupBy('month', 'month_name')
+                ->orderBy('month', 'asc')
+                ->get();
+        }
+        
+        $months = [];
+        $amounts = [];
+        $counts = [];
+        
+        // Fill in all months (even those with no data)
+        for ($i = 1; $i <= 12; $i++) {
+            $monthName = date('M', mktime(0, 0, 0, $i, 1));
+            $monthKey = date('Y-m', mktime(0, 0, 0, $i, 1));
+            $months[] = $monthName;
+            
+            $found = $data->firstWhere('month', $monthKey);
+            $amounts[] = $found ? (float) $found->total_amount : 0;
+            $counts[] = $found ? (int) $found->total_count : 0;
+        }
+        
+        return response()->json([
+            'months' => $months,
+            'amounts' => $amounts,
+            'counts' => $counts
+        ]);
+    }
     
     public function receipt($id)
     {
