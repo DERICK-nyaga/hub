@@ -22,6 +22,8 @@ export default defineConfig({
                 'resources/js/salary-app.js',
                 'resources/css/sidebar.css',
                 'resources/js/sidebar.js',
+                'resources/css/salary-role-manager.css',
+                'resources/js/salary-role-manager.js',
             ],
             refresh: true,
         }),

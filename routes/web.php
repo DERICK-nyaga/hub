@@ -97,12 +97,14 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
         
         // Deductions
         Route::resource('deductions', SalaryDeductionController::class)->only(['index', 'store']);
+        Route::get('/deductions/create', [SalaryDeductionController::class, 'create'])->name('deductions.create');
         Route::post('deductions/{deduction}/approve', [SalaryDeductionController::class, 'approve'])->name('deductions.approve');
         Route::get('deductions/{id}', [SalaryDeductionController::class, 'show'])->name('deductions.show');
         Route::post('deductions/{deduction}/cancel', [SalaryDeductionController::class, 'cancel'])->name('deductions.cancel');
         
         // Schedules
         Route::resource('schedules', SalaryScheduleController::class)->only(['index', 'store']);
+        Route::get('/schedules/create', [SalaryScheduleController::class, 'create'])->name('schedules.create');
         Route::post('schedules/{schedule}/approve', [SalaryScheduleController::class, 'approve'])->name('schedules.approve');
         Route::post('schedules/{schedule}/process', [SalaryScheduleController::class, 'processNow'])->name('schedules.process');
         Route::get('payments/{payment}/print', [SalaryPaymentController::class, 'print'])->name('payments.print');
