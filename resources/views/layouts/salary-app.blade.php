@@ -1,4 +1,3 @@
-extract css and js but maintain functionality
 <!DOCTYPE html>
 <html lang="en">
 <head>
