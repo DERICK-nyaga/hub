@@ -64,6 +64,15 @@ class SalaryScheduleController extends Controller
         ));
     }
 
+    /**
+     * Show the form for creating a new payment schedule.
+     */
+    public function create()
+    {
+        $employees = SalaryEmployee::where('status', 'active')->get();
+        return view('salary.schedules.create', compact('employees'));
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
