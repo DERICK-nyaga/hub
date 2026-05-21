@@ -21,6 +21,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
+use App\Services\PaymentReminderService;
+
 
 class PaymentController extends Controller
 {
@@ -115,7 +117,6 @@ class PaymentController extends Controller
                 return $this->jsonSuccess($payment->load(['station', 'vendor']), 'Payment created successfully', 201);
             }
 
-            // Already redirecting to index - keep as is
             return redirect()->route('payments.index')
                 ->with('success', 'Payment created successfully!');
 
@@ -169,7 +170,6 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Reuse the same create view
             return view('payments.create', [
                 'stations' => $stations,
                 'vendors' => $vendors,
@@ -187,7 +187,6 @@ class PaymentController extends Controller
     public function update(Request $request, Payment $payment)
     {
         try {
-            // $this->authorizePaymentUpdate($payment);
             $validated = $this->validatePaymentUpdate($request);
             $validated = $this->handlePaymentAttachment($request, $validated, $payment);
 
@@ -197,7 +196,6 @@ class PaymentController extends Controller
                 return $this->jsonSuccess($payment->load(['station', 'vendor']), 'Payment updated successfully');
             }
 
-            // CHANGE THIS - redirect to payments.index instead of payments.show
             return redirect()->route('payments.index')
                 ->with('success', 'Payment updated successfully!');
 
@@ -371,35 +369,57 @@ class PaymentController extends Controller
         }
     }
 
-    public function storeInternetPayment(Request $request)
-    {
-        try {
-            Log::info('=== STORE INTERNET PAYMENT DEBUG ===');
-            Log::info('Request data:', $request->all());
+public function storeInternetPayment(Request $request)
+{
+    try {
+        Log::info('=== STORE INTERNET PAYMENT DEBUG ===');
+        Log::info('Request data:', $request->all());
 
-            $validated = $this->validateInternetPaymentStore($request);
-            $payment = $this->createInternetPaymentRecord($validated);
+        $validated = $this->validateInternetPaymentStore($request);
+        $payment = $this->createInternetPaymentRecord($validated);
 
-            if ($request->boolean('create_schedule')) {
-                $this->createPaymentSchedule($validated);
-            }
-
-            Log::info('Payment created successfully. ID: ' . $payment->id);
-
-            if ($this->isApiRequest($request)) {
-                return $this->jsonSuccess($payment->load(['station', 'provider']), 'Internet payment recorded successfully', 201);
-            }
-
-            return redirect()->route('payments.internet.index')
-                ->with('success', 'Internet payment recorded successfully!');
-
-        } catch (ValidationException $e) {
-            return $this->handleValidationError($e, $request);
-        } catch (\Exception $e) {
-            Log::error('Error creating internet payment: ' . $e->getMessage());
-            return $this->handleError($e, $request, 'Error creating internet payment');
+        if ($request->boolean('create_schedule')) {
+            $this->createPaymentSchedule($validated);
         }
+
+        Log::info('Payment created successfully. ID: ' . $payment->id);
+
+        // DEBUG: Check if route exists
+        $routeName = 'payments.internet.index';
+        $routeUrl = route($routeName);
+        Log::info('Redirect URL: ' . $routeUrl);
+
+        // FOR API REQUESTS
+        if ($this->isApiRequest($request)) {
+            return $this->jsonSuccess($payment->load(['station', 'provider']), 'Internet payment recorded successfully', 201);
+        }
+
+        // FOR WEB REQUESTS - Using direct URL generation
+        return redirect()->to($routeUrl)
+            ->with('success', 'Internet payment recorded successfully!');
+
+    } catch (ValidationException $e) {
+        Log::error('Validation error: ' . json_encode($e->errors()));
+        if ($this->isApiRequest($request)) {
+            return $this->jsonError('Validation failed', 422, $e->errors());
+        }
+        return redirect()->back()
+            ->withErrors($e->errors())
+            ->withInput();
+    } catch (\Exception $e) {
+        Log::error('Error creating internet payment: ' . $e->getMessage());
+        Log::error('Stack trace: ' . $e->getTraceAsString());
+        
+        if ($this->isApiRequest($request)) {
+            return $this->jsonError('Error creating internet payment: ' . $e->getMessage(), 500);
+        }
+        
+        // Return a clear error response
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Error creating internet payment: ' . $e->getMessage());
     }
+}
 
     public function editInternetPayment(Request $request, $id)
     {
@@ -719,28 +739,6 @@ class PaymentController extends Controller
         }
     }
 
-    public function sendReminder(Request $request, $paymentId)
-    {
-        try {
-            $payment = InternetPayment::with(['station', 'provider'])->findOrFail($paymentId);
-            $reminderSent = $this->sendPaymentReminder($payment);
-
-            if ($this->isApiRequest($request)) {
-                return $this->jsonSuccess([
-                    'payment_id' => $payment->id,
-                    'reminder_sent_at' => now(),
-                    'reminder_sent' => $reminderSent
-                ], 'Reminder sent successfully');
-            }
-
-            return redirect()->back()
-                ->with('success', 'Reminder sent successfully!');
-
-        } catch (\Exception $e) {
-            return $this->handleError($e, $request, 'Failed to send reminder');
-        }
-    }
-
     public function indexSchedules(Request $request)
     {
         try {
@@ -906,7 +904,7 @@ class PaymentController extends Controller
 
     private function validatePaymentUpdate(Request $request): array
     {
-    $paymentTypes = config('payment.types');
+        $paymentTypes = config('payment.types');
         $typesString = 'utility,service,product,rent,salary,other'; // default fallback
         
         if ($paymentTypes && is_array($paymentTypes)) {
@@ -991,14 +989,14 @@ class PaymentController extends Controller
         return $request->validate([
             'station_id' => 'required|exists:stations,station_id',
             'vendor_id' => 'required|exists:internet_providers,vendor_id',
-            'account_number' => 'required',
+            'account_number' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'previous_balance' => 'nullable|numeric|min:0',
             'billing_month' => 'required|date',
             'due_date' => 'required|date',
             'payment_date' => 'nullable|date',
-            'mpesa_receipt' => 'nullable|string',
-            'transaction_id' => 'nullable|string',
+            'mpesa_receipt' => 'nullable|string|max:255',
+            'transaction_id' => 'nullable|string|max:255',
             'invoice_notes' => 'nullable|string',
             'payment_method' => 'nullable|in:M-Pesa,Bank Transfer,Cash,Cheque',
             'status' => 'required|in:pending,paid,overdue,cancelled',
@@ -1011,15 +1009,15 @@ class PaymentController extends Controller
         return $request->validate([
             'station_id' => 'required|exists:stations,station_id',
             'vendor_id' => 'required|exists:internet_providers,vendor_id',
-            'account_number' => 'required|unique:internet_payments,account_number,' . $id,
+            'account_number' => 'required|string|max:255|unique:internet_payments,account_number,' . $id,
             'amount' => 'required|numeric|min:0',
             'previous_balance' => 'nullable|numeric|min:0',
             'billing_month' => 'required|date',
             'due_date' => 'required|date',
             'payment_date' => 'nullable|date',
             'status' => 'required|in:pending,paid,overdue,cancelled',
-            'mpesa_receipt' => 'nullable|string',
-            'transaction_id' => 'nullable|string',
+            'mpesa_receipt' => 'nullable|string|max:255',
+            'transaction_id' => 'nullable|string|max:255',
             'invoice_notes' => 'nullable|string',
             'payment_method' => 'nullable|in:M-Pesa,Bank Transfer,Cash,Cheque'
         ]);
@@ -1027,6 +1025,7 @@ class PaymentController extends Controller
 
     private function createInternetPaymentRecord(array $data): InternetPayment
     {
+        // Ensure dates are properly formatted for database compatibility
         $paymentData = [
             'station_id' => $data['station_id'],
             'vendor_id' => $data['vendor_id'],
@@ -1035,7 +1034,7 @@ class PaymentController extends Controller
             'previous_balance' => isset($data['previous_balance']) ? (float) $data['previous_balance'] : 0.00,
             'billing_month' => Carbon::parse($data['billing_month'])->format('Y-m-d'),
             'due_date' => Carbon::parse($data['due_date'])->format('Y-m-d'),
-            'payment_date' => $data['payment_date'] ? Carbon::parse($data['payment_date'])->format('Y-m-d') : null,
+            'payment_date' => isset($data['payment_date']) && $data['payment_date'] ? Carbon::parse($data['payment_date'])->format('Y-m-d') : null,
             'mpesa_receipt' => $data['mpesa_receipt'] ?? null,
             'transaction_id' => $data['transaction_id'] ?? null,
             'status' => $data['status'],
@@ -1043,12 +1042,17 @@ class PaymentController extends Controller
             'payment_method' => $data['payment_method'] ?? null
         ];
 
+        // Remove null values for optional fields to avoid database constraint issues
+        $paymentData = array_filter($paymentData, function($value) {
+            return $value !== null;
+        });
+
         return InternetPayment::create($paymentData);
     }
 
     private function prepareInternetPaymentData(array $data): array
     {
-        return [
+        $preparedData = [
             'station_id' => $data['station_id'],
             'vendor_id' => $data['vendor_id'],
             'account_number' => $data['account_number'],
@@ -1056,29 +1060,36 @@ class PaymentController extends Controller
             'previous_balance' => isset($data['previous_balance']) ? (float) $data['previous_balance'] : 0.00,
             'billing_month' => Carbon::parse($data['billing_month'])->format('Y-m-d'),
             'due_date' => Carbon::parse($data['due_date'])->format('Y-m-d'),
-            'payment_date' => $data['payment_date'] ? Carbon::parse($data['payment_date'])->format('Y-m-d') : null,
+            'payment_date' => isset($data['payment_date']) && $data['payment_date'] ? Carbon::parse($data['payment_date'])->format('Y-m-d') : null,
             'status' => $data['status'],
             'mpesa_receipt' => $data['mpesa_receipt'] ?? null,
             'transaction_id' => $data['transaction_id'] ?? null,
             'invoice_notes' => $data['invoice_notes'] ?? null,
             'payment_method' => $data['payment_method'] ?? null
         ];
+
+        // Remove null values for optional fields
+        return array_filter($preparedData, function($value) {
+            return $value !== null;
+        });
     }
 
     private function createPaymentSchedule(array $data): void
     {
         $provider = InternetProvider::find($data['vendor_id']);
 
-        PaymentSchedule::create([
-            'station_id' => $data['station_id'],
-            'payment_type' => 'internet',
-            'scheduled_date' => Carbon::parse($data['due_date'])->subDays(7)->format('Y-m-d'),
-            'scheduled_amount' => $data['amount'],
-            'frequency' => 'monthly',
-            'is_recurring' => true,
-            'description' => "Monthly internet payment to {$provider->name} for account {$data['account_number']}",
-            'vendor_id' => $provider->vendor_id
-        ]);
+        if ($provider) {
+            PaymentSchedule::create([
+                'station_id' => $data['station_id'],
+                'payment_type' => 'internet',
+                'scheduled_date' => Carbon::parse($data['due_date'])->subDays(7)->format('Y-m-d'),
+                'scheduled_amount' => (float) $data['amount'],
+                'frequency' => 'monthly',
+                'is_recurring' => true,
+                'description' => "Monthly internet payment to {$provider->name} for account {$data['account_number']}",
+                'vendor_id' => $provider->vendor_id
+            ]);
+        }
     }
 
     private function buildAirtimePaymentQuery(Request $request): Builder
@@ -1511,11 +1522,12 @@ class PaymentController extends Controller
             return $this->handleError($e, $request, 'Error deleting schedule');
         }
     }
+    
     public function showStationDetails(Request $request, $stationId)
     {
         try {
             $station = Station::with([
-                'manager',  // Load the manager relationship (EmployeeProfile)
+                'manager',
                 'employees' => function($query) {
                     $query->orderBy('first_name');
                 },
@@ -1539,7 +1551,6 @@ class PaymentController extends Controller
                 }
             ])->findOrFail($stationId);
             
-            // Get additional statistics
             $stats = [
                 'total_employees' => $station->employees->count(),
                 'active_employees' => $station->employees->where('status', 'active')->count(),
@@ -1592,4 +1603,81 @@ class PaymentController extends Controller
         }
     }
 
+    // manual trigger for sending reminders
+
+    protected $reminderService;
+
+public function __construct(PaymentReminderService $reminderService)
+{
+    $this->reminderService = $reminderService;
+}
+
+/**
+ * Send reminder for a specific payment
+ */
+public function sendReminder(Request $request, $paymentId)
+{
+    try {
+        $payment = InternetPayment::with(['station', 'provider'])->findOrFail($paymentId);
+        
+        // Get days until due
+        $dueDate = Carbon::parse($payment->due_date);
+        $daysUntilDue = Carbon::today()->diffInDays($dueDate, false);
+        
+        // Determine reminder type based on days until due
+        if ($daysUntilDue < 0) {
+            $reminderType = 'overdue';
+        } elseif ($daysUntilDue == 0) {
+            $reminderType = 'due_today';
+        } elseif ($daysUntilDue <= 1) {
+            $reminderType = '1_day';
+        } elseif ($daysUntilDue <= 3) {
+            $reminderType = '3_days';
+        } else {
+            $reminderType = '1_week';
+        }
+        
+        $sent = $this->reminderService->sendReminder($payment, $reminderType, $daysUntilDue);
+        
+        if ($sent) {
+            $this->reminderService->logReminder($payment, $reminderType, $daysUntilDue);
+        }
+        
+        if ($this->isApiRequest($request)) {
+            return $this->jsonSuccess([
+                'payment_id' => $payment->id,
+                'reminder_sent' => $sent,
+                'reminder_type' => $reminderType,
+                'sent_at' => now()
+            ], $sent ? 'Reminder sent successfully' : 'Failed to send reminder');
+        }
+        
+        $message = $sent ? 'Reminder sent successfully!' : 'Failed to send reminder';
+        $type = $sent ? 'success' : 'error';
+        
+        return redirect()->back()->with($type, $message);
+        
+    } catch (\Exception $e) {
+        return $this->handleError($e, $request, 'Failed to send reminder');
+    }
+}
+
+/**
+ * Send bulk reminders for all upcoming payments
+ */
+public function sendBulkReminders(Request $request)
+{
+    try {
+        $results = $this->reminderService->sendAllDueReminders();
+        
+        if ($this->isApiRequest($request)) {
+            return $this->jsonSuccess($results, "Reminders sent: {$results['total_sent']}");
+        }
+        
+        return redirect()->back()->with('success', "Reminders sent: {$results['total_sent']}");
+        
+    } catch (\Exception $e) {
+        return $this->handleError($e, $request, 'Failed to send bulk reminders');
+    }
+}
 }
