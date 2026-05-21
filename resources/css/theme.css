@@ -1,0 +1,371 @@
+/* Theme Variables - Light Mode (Default) */
+:root, :root.light-mode {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f3f4f6;
+    --bg-tertiary: #e5e7eb;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --border-color: #e5e7eb;
+    --accent-color: #3b82f6;
+    --accent-hover: #2563eb;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --card-bg: #ffffff;
+    --header-bg: #f9fafb;
+    --sidebar-bg: #ffffff;
+}
+
+/* Dark Mode Variables */
+:root.dark-mode, :root.dark {
+    --bg-primary: #1a1a1a !important;
+    --bg-secondary: #2d2d2d !important;
+    --bg-tertiary: #3d3d3d !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #d1d5db !important;
+    --text-muted: #9ca3af !important;
+    --border-color: #404040 !important;
+    --accent-color: #60a5fa !important;
+    --accent-hover: #3b82f6 !important;
+    --success-color: #34d399 !important;
+    --warning-color: #fbbf24 !important;
+    --danger-color: #f87171 !important;
+    --card-bg: #2d2d2d !important;
+    --header-bg: #262626 !important;
+    --sidebar-bg: #1f2937 !important;
+}
+
+/* Apply theme variables to all elements */
+body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Cards and containers */
+.card, .modern-header, .breadcrumb-wrapper, .content-area {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Tables */
+table, .table {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.table th, .table td {
+    border-color: var(--border-color) !important;
+}
+
+/* Inputs and forms */
+input, select, textarea, .form-control {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+}
+
+/* Sidebar */
+.sidebar, .salary-sidebar {
+    background-color: var(--sidebar-bg) !important;
+    border-right-color: var(--border-color) !important;
+}
+
+/* Alerts */
+.alert-success {
+    background-color: var(--success-color) !important;
+    color: #000000 !important;
+}
+
+.alert-error, .alert-danger {
+    background-color: var(--danger-color) !important;
+    color: #000000 !important;
+}
+
+/* Dropdowns */
+.dropdown-menu {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dropdown-item {
+    color: var(--text-primary) !important;
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* Modals */
+.modal-content {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Specific fixes for your dashboard */
+.salary-main-content {
+    background-color: var(--bg-primary) !important;
+}
+
+.modern-header {
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%) !important;
+}
+
+.header-title, .header-subtitle {
+    color: var(--text-primary) !important;
+}
+
+.role-card {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.stats-badge {
+    background-color: var(--accent-color) !important;
+}
+
+/* Settings panel specific */
+.settings-panel-container {
+    background: var(--bg-secondary) !important;
+}
+
+.settings-section-title h4 {
+    color: var(--text-primary) !important;
+}
+
+.settings-info {
+    background: var(--bg-tertiary) !important;
+}
+
+.theme-option-btn {
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.theme-option-btn.active {
+    background: var(--accent-color) !important;
+    color: white !important;
+    border-color: var(--accent-color) !important;
+}
+
+/* Ensure icons are visible in dark mode */
+.fa, .fas, .far, .fab {
+    color: inherit;
+}
+
+/* Fix for any hardcoded white backgrounds */
+[style*="background-color: #fff"],
+[style*="background-color: white"],
+[style*="background: #fff"],
+[style*="background: white"] {
+    background-color: var(--bg-primary) !important;
+}
+
+[style*="color: #000"],
+[style*="color: black"] {
+    color: var(--text-primary) !important;
+}
+
+/* Force icon visibility in dark mode */
+.dark-mode i, 
+.dark-mode .fas, 
+.dark-mode .far, 
+.dark-mode .fab,
+[data-theme="dark"] i,
+[data-theme="dark"] .fas,
+[data-theme="dark"] .far,
+[data-theme="dark"] .fab {
+    color: inherit !important;
+}
+
+/* Make sure icons in buttons are visible */
+.dark-mode button i,
+.dark-mode .btn i {
+    color: currentColor !important;
+}
+
+/* Remove all transitions from theme-related elements */
+.dark-mode,
+.dark-mode *,
+.light-mode,
+.light-mode *,
+[data-theme="dark"],
+[data-theme="light"] {
+    transition: none !important;
+    transition-property: none !important;
+    animation: none !important;
+}
+
+/* Keep only essential transitions for user interactions (optional) */
+button, a, .btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* But NOT for theme colors */
+button.theme-option-btn,
+.brightness-action-btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+
+.settings-panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.settings-panel-container-commercial {
+    width: 90%;
+    max-width: 680px;
+    max-height: 85vh;
+    background: transparent;
+    border-radius: 28px;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.settings-panel-header-commercial {
+    display: flex;
+    justify-content: flex-end;
+    padding: 16px 20px 0 20px;
+    background: transparent;
+}
+
+.close-settings-commercial {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-settings-commercial:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+.settings-panel-body-commercial {
+    max-height: calc(85vh - 60px);
+    overflow-y: auto;
+    border-radius: 0 0 28px 28px;
+}
+
+/* Custom scrollbar */
+.settings-panel-body-commercial::-webkit-scrollbar {
+    width: 8px;
+}
+
+.settings-panel-body-commercial::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.settings-panel-body-commercial::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 4px;
+}
+
+.settings-panel-body-commercial::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.8);
+}
+
+.settings-toggle-commercial {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 40px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.settings-toggle-commercial:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.toggle-indicator {
+    width: 6px;
+    height: 6px;
+    background: #4ade80;
+    border-radius: 3px;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* Add to your main CSS file */
+.force-repaint {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Prevent FOUC (Flash of Unstyled Content) */
+.dark-mode .no-fouc,
+.light-mode .no-fouc {
+    visibility: visible !important;
+}
+
+/* Smooth transition for theme changes (optional) */
+.theme-transition-ready {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
