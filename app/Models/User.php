@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 // use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -84,5 +85,22 @@ class User extends Authenticatable
     public function isStaff(): bool
     {
         return $this->role === 'staff';
+    }
+
+    public function preference()
+    {
+        return $this->hasOne(UserPreference::class);
+    }
+
+    public function getThemeAttribute()
+    {
+        return Cache::remember("user_{$this->id}_theme", 3600, function () {
+            return $this->preference?->theme ?? 'light';
+        });
+    }
+
+    public function getBrightnessAttribute(): int
+    {
+        return $this->preference?->brightness ?? 100;
     }
 }

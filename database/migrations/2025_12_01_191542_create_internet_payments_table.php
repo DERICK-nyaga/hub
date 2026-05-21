@@ -24,6 +24,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'paid', 'overdue', 'cancelled'])->default('pending');
             $table->text('invoice_notes')->nullable(); // Could contain "Service activated" etc
             $table->string('payment_method')->nullable(); // M-Pesa, Bank Transfer, etc
+            $table->timestamp('last_reminder_sent')->nullable();
+            $table->integer('reminder_count')->default(0);
             $table->timestamps();
 
             // Indexes for faster queries

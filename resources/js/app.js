@@ -3,6 +3,7 @@ import '../css/app.css';
 import './payments.js';
 import './deductions.js';
 import './employee-balance.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     // Mobile menu toggle
     const sidebar = document.querySelector('.sidebar');

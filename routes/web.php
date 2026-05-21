@@ -27,12 +27,17 @@ use App\Controllers\Salary\SalaryDashboardController;
 use App\Controllers\Salary\SalaryPaymentController;
 use App\Controllers\Salary\SalaryDeductionController;
 use App\Controllers\Salary\SalaryScheduleController;
-
+use App\Controllers\UserPreferenceController;
+use App\Controllers\SuccessRateController;
 
 Route::resource('order-numbers', OrderNumberController::class);
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-Route::get('/sidebar', [DashboardController::class, 'sidebar']);
+    Route::get('/', function () {
+        return view('welcome');
+    });
+
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+    Route::get('/sidebar', [DashboardController::class, 'sidebar'])->middleware('auth');
 
     Route::get('/employee-profile', [EmployeeProfileController::class, 'index'])->name('employees_profile.index');
     Route::get('/employee-profile/create', [EmployeeProfileController::class, 'create'])->name('employees_profile.create');
@@ -94,6 +99,8 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
         Route::resource('payments', SalaryPaymentController::class)->except(['edit', 'update', 'destroy']);
         Route::post('payments/{payment}/approve', [SalaryPaymentController::class, 'approve'])->name('payments.approve');
         Route::get('history', [SalaryPaymentController::class, 'history'])->name('history');
+        Route::get('payments/preview/{employeeId}', [SalaryPaymentController::class, 'preview'])->name('payments.preview');
+        Route::get('payments/approval-info', [SalaryPaymentController::class, 'approvalInfo'])->name('payments.approval-info');
         
         // Deductions
         Route::resource('deductions', SalaryDeductionController::class)->only(['index', 'store']);
@@ -101,7 +108,16 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
         Route::post('deductions/{deduction}/approve', [SalaryDeductionController::class, 'approve'])->name('deductions.approve');
         Route::get('deductions/{id}', [SalaryDeductionController::class, 'show'])->name('deductions.show');
         Route::post('deductions/{deduction}/cancel', [SalaryDeductionController::class, 'cancel'])->name('deductions.cancel');
-        
+        Route::post('deductions/{deductionId}/process-dismissal', [SalaryPaymentController::class, 'processDismissal'])->name('deductions.process-dismissal');
+        Route::get('deductions/pending-for-payment/{employeeId}', [SalaryDeductionController::class, 'getPendingForPayment'])->name('deductions.pending-for-payment');
+
+        // ===== NEW DEDUCTION RULES ROUTES =====
+        Route::post('payments/process-with-deduction', [SalaryPaymentController::class, 'processPaymentWithDeduction'])->name('payments.process-with-deduction');
+        Route::get('payments/payable/{id}', [SalaryPaymentController::class, 'showPayableAmount'])->name('payments.show-payable');
+        Route::post('payments/confirm/{id}', [SalaryPaymentController::class, 'confirmPayment'])->name('payments.confirm');
+        Route::post('payments/preview-deduction', [SalaryPaymentController::class, 'previewDeduction'])->name('payments.preview-deduction');
+        Route::get('payments/receipt/{id}', [SalaryPaymentController::class, 'generateReceipt'])->name('payments.receipt');
+
         // Schedules
         Route::resource('schedules', SalaryScheduleController::class)->only(['index', 'store']);
         Route::get('/schedules/create', [SalaryScheduleController::class, 'create'])->name('schedules.create');
@@ -124,6 +140,10 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
         Route::post('schedules/bulk-approve', [SalaryScheduleController::class, 'bulkApprove'])->name('schedules.bulk-approve');
         Route::post('schedules/bulk-delete', [SalaryScheduleController::class, 'bulkDelete'])->name('schedules.bulk-delete');
         Route::get('schedules/export', [SalaryScheduleController::class, 'export'])->name('schedules.export');
+
+        // Bulk operations for schedules
+        Route::post('/salary/schedules/bulk-approve', [SalaryScheduleController::class, 'bulkApprove'])->name('salary.schedules.bulk-approve');
+        Route::post('/salary/schedules/bulk-delete', [SalaryScheduleController::class, 'bulkDelete'])->name('salary.schedules.bulk-delete');
 
         Route::delete('payments/{id}', [SalaryPaymentController::class, 'destroy'])->name('payments.destroy');
         Route::post('history/clear', [SalaryPaymentController::class, 'clearHistory'])->name('history.clear');
@@ -276,7 +296,7 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
     Route::post('/password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
 
     // Route::middleware(['auth'])->group(function () {
-        Route::get('/logout', function () {
+        Route::post('/logout', function () {
             Auth::logout();
             return redirect('/login')->with('status', 'You have been logged out.');
         })->name('logout');
@@ -338,22 +358,14 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
     });
     // payments
     Route::prefix('payments')->group(function () {
-
-        Route::get('/create', [PaymentController::class, 'create'])->name('payments.create');
-        Route::post('/', [PaymentController::class, 'store'])->name('payments.store');
-        Route::get('/index', [PaymentController::class, 'index'])->name('payments.index');
-        Route::get('/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
-        Route::put('/{payment}', [PaymentController::class, 'update'])->name('payments.update');
-        Route::delete('/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
-        Route::get('/{payment}', [PaymentController::class, 'show'])->name('payments.show');
-
-        // Internet Payment Routes (no duplicates now)
+        
+        // ====== INTERNET PAYMENT ROUTES (MUST come first) ======
+        Route::get('/internet', [PaymentController::class, 'indexInternetPayments'])
+            ->name('payments.internet.index');
         Route::get('/internet/create', [PaymentController::class, 'createInternetPayment'])
             ->name('payments.internet.create');
         Route::post('/internet', [PaymentController::class, 'storeInternetPayment'])
             ->name('payments.internet.store');
-        Route::get('/internet', [PaymentController::class, 'indexInternetPayments'])
-            ->name('payments.internet.index');
         Route::get('/internet/{id}/edit', [PaymentController::class, 'editInternetPayment'])
             ->name('payments.internet.edit');
         Route::put('/internet/{id}', [PaymentController::class, 'updateInternetPayment'])
@@ -362,28 +374,37 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
             ->name('payments.internet.show');
         Route::delete('/internet/{id}', [PaymentController::class, 'destroyInternetPayment'])
             ->name('payments.internet.destroy');
-            
-        // Airtime Payment Routes
-        Route::get('/airtime/{id}/renew', [PaymentController::class, 'renewAirtimePayment'])
-            ->name('payments.airtime.renew');
-        Route::delete('/airtime/{id}', [PaymentController::class, 'destroyAirtimePayment'])
-            ->name('payments.airtime.delete');
+        
+        // ====== AIRTIME PAYMENT ROUTES (MUST come next) ======
+        Route::get('/airtime', [PaymentController::class, 'indexAirtimePayments'])
+            ->name('payments.airtime.index');
         Route::get('/airtime/create', [PaymentController::class, 'createAirtimePayment'])
             ->name('payments.airtime.create');
         Route::post('/airtime', [PaymentController::class, 'storeAirtimePayment'])
             ->name('payments.airtime.store');
-        Route::get('/airtime', [PaymentController::class, 'indexAirtimePayments'])
-            ->name('payments.airtime.index');
+        Route::get('/airtime/{id}/renew', [PaymentController::class, 'renewAirtimePayment'])
+            ->name('payments.airtime.renew');
+        Route::delete('/airtime/{id}', [PaymentController::class, 'destroyAirtimePayment'])
+            ->name('payments.airtime.delete');
         Route::get('/airtime/{id}/details', [PaymentController::class, 'showAirtimeDetails'])
             ->name('payments.airtime.details');
         
-        // Other Payment Routes
+        // ====== OTHER PAYMENT ROUTES ======
         Route::get('/upcoming', [PaymentController::class, 'upcomingPayments'])
             ->name('payments.upcoming');
         Route::get('/overdue', [PaymentController::class, 'overduePayments'])
             ->name('payments.overdue');
         Route::get('/station/{stationId}', [PaymentController::class, 'stationPayments'])
             ->name('payments.station');
+        
+        // ====== MAIN PAYMENT ROUTES (with parameter - MUST come LAST) ======
+        Route::get('/create', [PaymentController::class, 'create'])->name('payments.create');
+        Route::post('/', [PaymentController::class, 'store'])->name('payments.store');
+        Route::get('/index', [PaymentController::class, 'index'])->name('payments.index');
+        Route::get('/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit');
+        Route::put('/{payment}', [PaymentController::class, 'update'])->name('payments.update');
+        Route::delete('/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+        Route::get('/{payment}', [PaymentController::class, 'show'])->name('payments.show');
     });
 
     // API Routes for badge counts
@@ -421,9 +442,9 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
     ]);
 
     Route::get('/employees/{id}', function($id) {
-    $employee = \App\Models\Employee::findOrFail($id);
-    return response()->json(['success' => true, 'data' => $employee]);
-})->name('employee.show');
+        $employee = \App\Models\Employee::findOrFail($id);
+        return response()->json(['success' => true, 'data' => $employee]);
+    })->name('employee.show');
 
     Route::resource('/losses', LossController::class)->names([
         'index' => 'losses.index',
@@ -498,60 +519,80 @@ Route::get('/sidebar', [DashboardController::class, 'sidebar']);
     Route::post('/mpesa/callback', [PaymentController::class, 'mpesaCallback'])
         ->name('mpesa.callback');
 
-        Route::prefix('pending-approvals')->middleware(['auth'])->group(function () {
-    Route::get('/', [PendingApprovalController::class, 'index'])->name('pending-approvals.index');
-    Route::post('/{id}/approve', [PendingApprovalController::class, 'approve'])->name('pending-approvals.approve');
-    Route::post('/{id}/reject', [PendingApprovalController::class, 'reject'])->name('pending-approvals.reject');
-});
+    Route::prefix('pending-approvals')->middleware(['auth'])->group(function () {
+        Route::get('/', [PendingApprovalController::class, 'index'])->name('pending-approvals.index');
+        Route::post('/{id}/approve', [PendingApprovalController::class, 'approve'])->name('pending-approvals.approve');
+        Route::post('/{id}/reject', [PendingApprovalController::class, 'reject'])->name('pending-approvals.reject');
+    });
 
 
-Route::get('/test-approval-service', function() {
-    try {
-        $service = new \App\Services\PendingApprovalService();
-        return response()->json([
-            'success' => true,
-            'requires_approval' => $service->requiresApproval(['basic_salary' => 50000]),
-            'message' => 'Service is working'
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ], 500);
-    }
-});
-
-Route::get('/', function () {
-    return view('welcome');
-});
-
+    Route::get('/test-approval-service', function() {
+        try {
+            $service = new \App\Services\PendingApprovalService();
+            return response()->json([
+                'success' => true,
+                'requires_approval' => $service->requiresApproval(['basic_salary' => 50000]),
+                'message' => 'Service is working'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
+        }
+    });
 
     Route::get('/payments/station-details/{stationId}', [PaymentController::class, 'showStationDetails'])
     ->name('payments.station.details');
     Route::get('/station/{stationId}', [PaymentController::class, 'stationPayments'])->name('station');
 
     Route::get('/sync-employees', function () {
-    $employees = App\Models\Employee::all();
-    $count = 0;
-    
-    foreach ($employees as $employee) {
-        App\Models\SalaryEmployee::updateOrCreate(
-            ['phone' => $employee->phone],
-            [
-                'name' => $employee->full_name ?? $employee->first_name . ' ' . $employee->last_name,
-                'phone' => $employee->phone,
-                'position' => $employee->position,
-                'station' => $employee->station?->name ?? 'Main Office',
-                'status' => $employee->status,
-                'base_salary' => $employee->salary,
-                'bank_account' => $employee->bank_account ?? null,
-                'mpesa_number' => $employee->phone,
-            ]
-        );
-        $count++;
-    }
-    
-    return "Successfully synced {$count} employees!";
-});
+        $employees = App\Models\Employee::all();
+        $count = 0;
+        
+        foreach ($employees as $employee) {
+            App\Models\SalaryEmployee::updateOrCreate(
+                ['phone' => $employee->phone],
+                [
+                    'name' => $employee->full_name ?? $employee->first_name . ' ' . $employee->last_name,
+                    'phone' => $employee->phone,
+                    'position' => $employee->position,
+                    'station' => $employee->station?->name ?? 'Main Office',
+                    'status' => $employee->status,
+                    'base_salary' => $employee->salary,
+                    'bank_account' => $employee->bank_account ?? null,
+                    'mpesa_number' => $employee->phone,
+                ]
+            );
+            $count++;
+        }
+        
+        return "Successfully synced {$count} employees!";
+    });
+
+    // user Preferences & settings(theme, notifications)
+
+    // Route::middleware(['auth'])->group(function () {
+        Route::post('/preferences/theme', [UserPreferenceController::class, 'updateTheme'])->name('preferences.theme');
+        Route::post('/preferences/brightness', [UserPreferenceController::class, 'updateBrightness'])->name('preferences.brightness');
+        Route::get('/preferences', [UserPreferenceController::class, 'getUserPreferences'])->name('preferences.get');
+    // });
+
+    Route::post('/payments/send-bulk-reminders', [PaymentController::class, 'sendBulkReminders'])->name('payments.bulk-reminders');
+
+    // success rate
+
+    Route::get('/successrate', [SuccessRateController::class, 'index'])->name('successrate.index');
+    Route::post('/successrate/upload', [SuccessRateController::class, 'upload'])->name('successrate.upload');
+    Route::get('/successrate/analysis', [SuccessRateController::class, 'showAnalysis'])->name('successrate.analysis');
+    Route::get('/successrate/station/{stationName}', [SuccessRateController::class, 'getStationDetails'])->name('successrate.station.details');
+
+    Route::get('/api/weekly-progress', [SuccessRateController::class, 'getWeeklyProgress'])->name('successrate.weekly.progress');
+    Route::get('/export-report', [SuccessRateController::class, 'exportReport'])->name('successrate.export');
+
+    Route::get('deductions/employee/{employeeId}/pending', [SalaryDeductionController::class, 'getEmployeePendingDeductions'])->name('deductions.employee-pending');
+    Route::post('deductions/bulk-approve', [SalaryDeductionController::class, 'bulkApprove'])->name('deductions.bulk-approve');
+    Route::get('deductions/export', [SalaryDeductionController::class, 'export'])->name('deductions.export');
+    Route::get('deductions/summary', [SalaryDeductionController::class, 'getSummary'])->name('deductions.summary');

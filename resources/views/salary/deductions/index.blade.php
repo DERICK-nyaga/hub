@@ -350,33 +350,49 @@ function deductionsManager() {
 }
 
 // Form submission
-document.getElementById('deductionForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    const deductionForm = document.getElementById('deductionForm');
     
-    const formData = new FormData(this);
-    const id = document.getElementById('deduction_id').value;
-    const url = id ? `/salary/deductions/${id}` : '{{ route("salary.deductions.store") }}';
-    const method = id ? 'PUT' : 'POST';
-    
-    try {
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(Object.fromEntries(formData))
+    if (deductionForm) {
+        deductionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            
+            const formData = new FormData(this);
+            const id = document.getElementById('deduction_id').value;
+            const url = id ? `/salary/deductions/${id}` : '/salary/deductions';
+            const method = id ? 'PUT' : 'POST';
+            
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData))
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to save deduction'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error saving deduction. Please try again.');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            }
         });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + (data.message || 'Failed to save deduction'));
-        }
-    } catch (error) {
-        alert('Error saving deduction');
     }
 });
 

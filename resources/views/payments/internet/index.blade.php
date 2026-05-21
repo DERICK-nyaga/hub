@@ -134,7 +134,7 @@
 
                                             <button type="button"
                                                     class="btn btn-success"
-                                                    onclick="sendReminder{{ $payment->id }})"
+                                                    onclick="sendReminder({{ $payment->id }})" 
                                                     title="Send Reminder"
                                                     style="min-width: 36px;">
                                                 <i class="fa fa-envelope"></i>

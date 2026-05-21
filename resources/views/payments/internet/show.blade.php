@@ -166,26 +166,38 @@
                 </div>
             </div>
 
-            <!-- Summary Card -->
+            <!-- Summary Card-->
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Summary</h5>
                 </div>
                 <div class="card-body">
-                    <table class="table table-sm">
-                        <tr>
-                            <td>Created:</td>
-                            <td class="text-end">{{ $payment->created_at->format('d/m/Y H:i') }}</td>
-                        </tr>
-                        <tr>
-                            <td>Last Updated:</td>
-                            <td class="text-end">{{ $payment->updated_at->format('d/m/Y H:i') }}</td>
-                        </tr>
-                        <tr>
-                            <td>Payment ID:</td>
-                            <td class="text-end"><code>#{{ $payment->id }}</code></td>
-                        </tr>
-                    </table>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-12">
+                            <small class="text-muted d-block">Created</small>
+                            <strong class="text-break">{{ $payment->created_at->format('d/m/Y H:i') }}</strong>
+                        </div>
+                        <div class="col-6 col-md-12">
+                            <small class="text-muted d-block">Last Updated</small>
+                            <strong class="text-break">{{ $payment->updated_at->format('d/m/Y H:i') }}</strong>
+                        </div>
+                        <div class="col-12">
+                            <small class="text-muted d-block">Payment ID</small>
+                            <strong><code class="text-break">#{{ $payment->id }}</code></strong>
+                        </div>
+                        @if($payment->mpesa_receipt)
+                        <div class="col-12">
+                            <small class="text-muted d-block">M-Pesa Receipt</small>
+                            <strong><code class="text-break">{{ $payment->mpesa_receipt }}</code></strong>
+                        </div>
+                        @endif
+                        @if($payment->transaction_id)
+                        <div class="col-12">
+                            <small class="text-muted d-block">Transaction ID</small>
+                            <strong><code class="text-break">{{ $payment->transaction_id }}</code></strong>
+                        </div>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

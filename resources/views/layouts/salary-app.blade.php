@@ -618,6 +618,7 @@
                                     <span class="salary-badge-admin"><i class="fas fa-trash-alt"></i> Delete Records</span>
                                     <span class="salary-badge-admin"><i class="fas fa-user-plus"></i> Manage Users</span>
                                     <span class="salary-badge-admin"><i class="fas fa-database"></i> System Backup</span>
+                                    <span class="salary-badge-admin"><i class="fas fa-undo-alt"></i> Restore Backup</span>
                                 </div>
                             </template>
                             
@@ -642,7 +643,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="text-gray-500 text-sm font-medium">Total Payments</p>
-                                    <p class="text-2xl font-bold text-gray-800 mt-1">KES {{ number_format($totalPayments ?? 0, 2) }}</p>
+                                    <p id="totalPaymentsDisplay" class="text-2xl font-bold text-gray-800 mt-1">KES <span id="totalPaymentsValue">0.00</span></p>
                                 </div>
                                 <div class="w-10 h-10 rounded-xl flex items-center justify-center"
                                      :class="{
@@ -666,7 +667,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="text-gray-500 text-sm font-medium">Pending Approvals</p>
-                                    <p id="pendingCount" class="text-2xl font-bold text-amber-600 mt-1">{{ $pendingApprovals ?? 0 }}</p>
+                                    <p id="pendingCount" class="text-2xl font-bold text-amber-600 mt-1">0</p>
                                 </div>
                                 <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
                                     <i class="fas fa-clock text-amber-600 text-lg"></i>
@@ -692,7 +693,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="text-gray-500 text-sm font-medium">Total Deductions</p>
-                                    <p class="text-2xl font-bold text-red-600 mt-1">KES {{ number_format($totalDeductions ?? 0, 2) }}</p>
+                                    <p id="totalDeductionsDisplay" class="text-2xl font-bold text-red-600 mt-1">KES 0.00</p>
                                 </div>
                                 <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
                                     <i class="fas fa-minus-circle text-red-600 text-lg"></i>
@@ -798,7 +799,7 @@
                             </div>
                             <div>
                                 <p class="text-xs text-indigo-600">Pending Items</p>
-                                <p id="salaryMetricsPendingCount" class="text-2xl font-bold text-indigo-700">{{ $pendingApprovals ?? 0 }}</p>
+                                <p id="salaryMetricsPendingCount" class="text-2xl font-bold text-indigo-700">0</p>
                             </div>
                         </div>
                     </div>
@@ -823,371 +824,452 @@
     </div>
     
     <script>
+    // ========================================
+    // AUTO-INCREMENT TOTAL PAYMENTS FUNCTION
+    // Calculates sum of ALL successfully completed payments
+    // ========================================
+    
+    // Global data stores
+    window.employees = window.employees || [];
+    window.salaryRecords = window.salaryRecords || [];
+    window.nextEmployeeId = window.nextEmployeeId || 1;
+    window.nextSalaryId = window.nextSalaryId || 1;
+    
+    // CORE FUNCTION: Calculate total payments from successfully completed records
+    window.calculateTotalSuccessfulPayments = function() {
+        if (!window.salaryRecords || window.salaryRecords.length === 0) {
+            return 0;
+        }
+        
+        // AUTO-INCREMENT: Sum only payments with status 'completed' or 'approved'
+        // This ensures only successfully made payments are counted
+        const total = window.salaryRecords
+            .filter(record => record.status === 'completed' || record.status === 'approved')
+            .reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
+        
+        // Update UI display
+        const totalDisplay = document.getElementById('totalPaymentsValue');
+        if (totalDisplay) {
+            totalDisplay.textContent = total.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        
+        return total;
+    };
+    
+    // Update pending approvals count
+    window.updatePendingCount = function() {
+        const pendingCount = window.salaryRecords ? window.salaryRecords.filter(r => r.status === 'pending_approval').length : 0;
+        const pendingCountEl = document.getElementById('pendingCount');
+        const metricsPendingEl = document.getElementById('salaryMetricsPendingCount');
+        if (pendingCountEl) pendingCountEl.textContent = pendingCount;
+        if (metricsPendingEl) metricsPendingEl.textContent = pendingCount;
+        return pendingCount;
+    };
+    
+    // Add new payment record (will trigger auto-increment when status is completed)
+    window.addSalaryRecord = function(employeeName, amount, status = 'pending_approval') {
+        const newRecord = {
+            id: window.nextSalaryId++,
+            employee_name: employeeName,
+            amount: parseFloat(amount),
+            status: status,
+            created_at: new Date().toISOString()
+        };
+        
+        window.salaryRecords.push(newRecord);
+        window.saveSalaryData();
+        
+        // Auto-increment total if status is completed
+        if (status === 'completed' || status === 'approved') {
+            window.calculateTotalSuccessfulPayments();
+        }
+        
+        window.updatePendingCount();
+        return newRecord;
+    };
+    
+    // Update payment status - CRITICAL for auto-increment
+    window.updatePaymentStatus = function(recordId, newStatus) {
+        const record = window.salaryRecords.find(r => r.id === recordId);
+        if (!record) return false;
+        
+        const oldStatus = record.status;
+        record.status = newStatus;
+        
+        window.saveSalaryData();
+        
+        // Recalculate total - this will auto-increment based on current completed payments
+        window.calculateTotalSuccessfulPayments();
+        window.updatePendingCount();
+        
+        return true;
+    };
+    
+    // Approve payment (changes status to completed)
+    window.approvePayment = function(recordId) {
+        return window.updatePaymentStatus(recordId, 'completed');
+    };
+    
+    // Save data to localStorage
+    window.saveSalaryData = function() {
+        localStorage.setItem('salarySystem_employees', JSON.stringify(window.employees));
+        localStorage.setItem('salarySystem_salaryRecords', JSON.stringify(window.salaryRecords));
+        localStorage.setItem('salarySystem_nextEmployeeId', window.nextEmployeeId);
+        localStorage.setItem('salarySystem_nextSalaryId', window.nextSalaryId);
+    };
+    
+    // Load saved data
+    window.loadSalaryData = function() {
+        const savedEmployees = localStorage.getItem('salarySystem_employees');
+        const savedRecords = localStorage.getItem('salarySystem_salaryRecords');
+        const savedNextEmp = localStorage.getItem('salarySystem_nextEmployeeId');
+        const savedNextSal = localStorage.getItem('salarySystem_nextSalaryId');
+        
+        if (savedEmployees) window.employees = JSON.parse(savedEmployees);
+        if (savedRecords) window.salaryRecords = JSON.parse(savedRecords);
+        if (savedNextEmp) window.nextEmployeeId = parseInt(savedNextEmp);
+        if (savedNextSal) window.nextSalaryId = parseInt(savedNextSal);
+        
+        // Initialize with sample data if empty
+        if (window.salaryRecords.length === 0) {
+            window.salaryRecords = [
+                { id: 1, employee_name: 'John Mwangi', amount: 75000, status: 'completed', created_at: new Date(2025, 1, 15).toISOString() },
+                { id: 2, employee_name: 'Sarah Wanjiku', amount: 85000, status: 'completed', created_at: new Date(2025, 1, 20).toISOString() },
+                { id: 3, employee_name: 'Michael Otieno', amount: 95000, status: 'pending_approval', created_at: new Date(2025, 2, 1).toISOString() },
+                { id: 4, employee_name: 'Grace Akinyi', amount: 65000, status: 'completed', created_at: new Date(2025, 2, 5).toISOString() }
+            ];
+            window.nextSalaryId = 5;
+            window.saveSalaryData();
+        }
+        
+        // Calculate and display total
+        window.calculateTotalSuccessfulPayments();
+        window.updatePendingCount();
+    };
+    
     // Quick Actions Renderer
-        window.renderSalaryQuickActions = function(role) {
-            const quickActionsContent = document.getElementById('salaryQuickActionsContent');
-            if (!quickActionsContent) return;
-            
-            if (role === 'Admin') {
-                quickActionsContent.innerHTML = `
-                    <button onclick="window.location.href='{{ route("salary.payments.create") }}'" class="salary-action-button">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>Create New Payment</span>
-                    </button>
-                    <button onclick="window.location.href='{{ route("salary.deductions.create") }}'" class="salary-action-button">
-                        <i class="fas fa-minus-circle"></i>
-                        <span>Add Deduction</span>
-                    </button>
-                    <button onclick="window.location.href='{{ route("salary.schedules.create") }}'" class="salary-action-button">
-                        <i class="fas fa-calendar-plus"></i>
-                        <span>Schedule Payment</span>
-                    </button>
-                    <button onclick="window.showSalaryMetricsModal()" class="salary-action-button">
-                        <i class="fas fa-chart-line"></i>
-                        <span>View Analytics</span>
-                    </button>
-                    <button onclick="window.salarySystemBackup()" class="salary-action-button">
-                        <i class="fas fa-database"></i>
-                        <span>System Backup</span>
-                    </button>
-                `;
-            } else {
-                quickActionsContent.innerHTML = `
-                    <button onclick="window.location.href='{{ route("salary.history") }}'" class="salary-action-button">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>View Reports</span>
-                    </button>
-                    <button onclick="window.showSalaryApprovalModal()" class="salary-action-button">
-                        <i class="fas fa-check-double"></i>
-                        <span>Review Approvals</span>
-                    </button>
-                    <button onclick="window.viewSalaryPendingPayments()" class="salary-action-button">
-                        <i class="fas fa-clock"></i>
-                        <span>Pending Payments</span>
-                    </button>
-                    <button onclick="window.location.href='{{ route("salary.history") }}?export=true'" class="salary-action-button">
-                        <i class="fas fa-download"></i>
-                        <span>Export Reports</span>
-                    </button>
-                    <button onclick="window.showSalaryMetricsModal()" class="salary-action-button">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Performance Metrics</span>
-                    </button>
-                `;
-            }
-        };
+    window.renderSalaryQuickActions = function(role) {
+        const quickActionsContent = document.getElementById('salaryQuickActionsContent');
+        if (!quickActionsContent) return;
         
-        // System Backup Function
-        window.salarySystemBackup = function() {
-            if (confirm('This will create a full system backup. Continue?')) {
-                salaryShowToast('System backup initiated...', 'info');
-                setTimeout(() => {
-                    salaryShowToast('Backup completed successfully!', 'success');
-                }, 2000);
-            }
-        };
-        
-        // View Pending Payments Function
-        window.viewSalaryPendingPayments = function() {
-            window.location.href = '{{ route("salary.payments.index") }}?status=pending_approval';
-        };
-        
-        // Toast notification helper
-        function salaryShowToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            const bgColor = type === 'success' ? '#10b981' : (type === 'error' ? '#ef4444' : '#3b82f6');
-            toast.className = 'salary-notification-toast';
-            toast.style.background = bgColor;
-            toast.innerHTML = `
-                <div class="px-5 py-4 min-w-[280px]">
-                    <div class="flex items-start gap-3">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                                <i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle')} text-white text-lg"></i>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-white/90 text-sm font-medium">${message}</p>
-                        </div>
-                        <button class="close-toast text-white/70 hover:text-white transition-colors">
-                            <i class="fas fa-times text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="h-1 bg-white/20" style="width: 100%; animation: salaryShrink 2s linear forwards;"></div>
+        if (role === 'Admin') {
+            quickActionsContent.innerHTML = `
+                <button onclick="window.location.href='{{ route("salary.payments.create") }}'" class="salary-action-button">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create New Payment</span>
+                </button>
+                <button onclick="window.location.href='{{ route("salary.deductions.create") }}'" class="salary-action-button">
+                    <i class="fas fa-minus-circle"></i>
+                    <span>Add Deduction</span>
+                </button>
+                <button onclick="window.location.href='{{ route("salary.schedules.create") }}'" class="salary-action-button">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>Schedule Payment</span>
+                </button>
+                <button onclick="window.showSalaryMetricsModal()" class="salary-action-button">
+                    <i class="fas fa-chart-line"></i>
+                    <span>View Analytics</span>
+                </button>
+                <button onclick="window.salarySystemBackup()" class="salary-action-button">
+                    <i class="fas fa-database"></i>
+                    <span>System Backup</span>
+                </button>
+                <button onclick="window.salarySystemRestore()" class="salary-action-button" style="background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4);">
+                    <i class="fas fa-undo-alt"></i>
+                    <span>Restore from Backup</span>
+                </button>
             `;
-            document.body.appendChild(toast);
+        } else {
+            quickActionsContent.innerHTML = `
+                <button onclick="window.location.href='{{ route("salary.history") }}'" class="salary-action-button">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>View Reports</span>
+                </button>
+                <button onclick="window.showSalaryApprovalModal()" class="salary-action-button">
+                    <i class="fas fa-check-double"></i>
+                    <span>Review Approvals</span>
+                </button>
+                <button onclick="window.viewSalaryPendingPayments()" class="salary-action-button">
+                    <i class="fas fa-clock"></i>
+                    <span>Pending Payments</span>
+                </button>
+                <button onclick="window.location.href='{{ route("salary.history") }}?export=true'" class="salary-action-button">
+                    <i class="fas fa-download"></i>
+                    <span>Export Reports</span>
+                </button>
+                <button onclick="window.showSalaryMetricsModal()" class="salary-action-button">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Performance Metrics</span>
+                </button>
+            `;
+        }
+    };
+    
+    window.viewSalaryPendingPayments = function() {
+        window.location.href = '{{ route("salary.payments.index") }}?status=pending_approval';
+    };
+    
+    // Backup function
+    window.salarySystemBackup = function() {
+        const backupData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            employees: window.employees,
+            salaryRecords: window.salaryRecords,
+            nextEmployeeId: window.nextEmployeeId,
+            nextSalaryId: window.nextSalaryId
+        };
+        
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `salary_backup_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        window.salaryShowToast('Backup completed successfully!', 'success');
+    };
+    
+    // Restore function
+    window.salarySystemRestore = function() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
             
-            const closeBtn = toast.querySelector('.close-toast');
-            closeBtn.addEventListener('click', () => {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const backup = JSON.parse(evt.target.result);
+                    if (backup.salaryRecords) {
+                        window.salaryRecords = backup.salaryRecords;
+                        window.employees = backup.employees || [];
+                        window.nextSalaryId = backup.nextSalaryId || (window.salaryRecords.length + 1);
+                        window.saveSalaryData();
+                        window.calculateTotalSuccessfulPayments();
+                        window.updatePendingCount();
+                        window.salaryShowToast(`Restored ${window.salaryRecords.length} records. Total: KES ${window.calculateTotalSuccessfulPayments().toFixed(2)}`, 'success');
+                    } else {
+                        window.salaryShowToast('Invalid backup file', 'error');
+                    }
+                } catch (err) {
+                    window.salaryShowToast('Restore failed: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    };
+    
+    // Toast notification
+    window.salaryShowToast = function(message, type = 'success') {
+        const toast = document.createElement('div');
+        const bgColor = type === 'success' ? '#10b981' : (type === 'error' ? '#ef4444' : '#3b82f6');
+        toast.className = 'salary-notification-toast';
+        toast.style.background = bgColor;
+        toast.innerHTML = `
+            <div class="px-5 py-4 min-w-[280px]">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle')} text-white text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-white/90 text-sm font-medium">${message}</p>
+                    </div>
+                    <button class="close-toast text-white/70 hover:text-white transition-colors">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="h-1 bg-white/20" style="width: 100%; animation: salaryShrink 3s linear forwards;"></div>
+        `;
+        document.body.appendChild(toast);
+        
+        const closeBtn = toast.querySelector('.close-toast');
+        closeBtn.addEventListener('click', () => {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 300);
+        });
+        
+        setTimeout(() => {
+            if (toast.parentElement) {
                 toast.classList.add('fade-out');
                 setTimeout(() => toast.remove(), 300);
-            });
-            
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.classList.add('fade-out');
-                    setTimeout(() => toast.remove(), 300);
-                }
-            }, 2000);
+            }
+        }, 3000);
+    };
+    
+    // Modal Functions
+    window.showSalaryApprovalModal = function() {
+        const modal = document.getElementById('salaryApprovalModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            window.loadSalaryApprovalItems();
         }
+    };
+    
+    window.closeSalaryApprovalModal = function() {
+        const modal = document.getElementById('salaryApprovalModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    };
+    
+    window.showSalaryMetricsModal = function() {
+        const modal = document.getElementById('salaryMetricsModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            window.initSalaryPerformanceChart();
+        }
+    };
+    
+    window.closeSalaryMetricsModal = function() {
+        const modal = document.getElementById('salaryMetricsModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    };
+    
+    // Load pending approval items
+    window.loadSalaryApprovalItems = function() {
+        const approvalList = document.getElementById('salaryApprovalListContent');
+        if (!approvalList) return;
         
-        // Modal Functions
-        window.showSalaryApprovalModal = function() {
-            const modal = document.getElementById('salaryApprovalModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                loadSalaryApprovalItems();
-            }
-        };
+        const pendingRecords = window.salaryRecords.filter(r => r.status === 'pending_approval');
         
-        window.closeSalaryApprovalModal = function() {
-            const modal = document.getElementById('salaryApprovalModal');
-            if (modal) {
-                modal.classList.add('hidden');
-            }
-        };
-        
-        window.showSalaryMetricsModal = function() {
-            const modal = document.getElementById('salaryMetricsModal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                initSalaryPerformanceChart();
-            }
-        };
-        
-        window.closeSalaryMetricsModal = function() {
-            const modal = document.getElementById('salaryMetricsModal');
-            if (modal) {
-                modal.classList.add('hidden');
-            }
-        };
-        
-        // Load pending approval items
-        function loadSalaryApprovalItems() {
-            const approvalList = document.getElementById('salaryApprovalListContent');
-            if (!approvalList) return;
-            
+        if (pendingRecords.length === 0) {
             approvalList.innerHTML = `
                 <div class="text-center py-8">
-                    <i class="fas fa-spinner fa-spin text-2xl text-purple-600"></i>
-                    <p class="mt-2 text-gray-500">Loading pending approvals...</p>
+                    <i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i>
+                    <p class="text-gray-500">No pending approvals at this time.</p>
                 </div>
             `;
-            
-            fetch('{{ route("salary.pending.approvals") }}')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.length === 0) {
-                        approvalList.innerHTML = `
-                            <div class="text-center py-8">
-                                <i class="fas fa-check-circle text-4xl text-green-500 mb-3"></i>
-                                <p class="text-gray-500">No pending approvals at this time.</p>
+            return;
+        }
+        
+        let html = '';
+        pendingRecords.forEach(record => {
+            html += `
+                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">Payment</span>
+                                <span class="text-xs text-gray-500">#${record.id}</span>
                             </div>
-                        `;
-                        return;
-                    }
-                    
-                    let html = '';
-                    data.forEach(item => {
-                        const badgeColor = item.type === 'Payment' ? 'purple' : (item.type === 'Deduction' ? 'orange' : 'blue');
-                        html += `
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-1">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <span class="px-2 py-1 bg-${badgeColor}-100 text-${badgeColor}-700 rounded-full text-xs font-semibold">
-                                                ${item.type}
-                                            </span>
-                                            <span class="text-xs text-gray-500">${item.reference}</span>
-                                        </div>
-                                        <p class="font-semibold text-gray-800">${item.employee_name}</p>
-                                        <p class="text-sm text-gray-600">Amount: KES ${salaryFormatNumber(item.amount)}</p>
-                                        ${item.reason ? `<p class="text-xs text-gray-500 mt-1">Reason: ${item.reason}</p>` : ''}
-                                    </div>
-                                    <div class="flex gap-2 ml-4">
-                                        <button onclick="salaryApproveItem('${item.type}', ${item.id})" 
-                                                class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition">
-                                            <i class="fas fa-check"></i> Approve
-                                        </button>
-                                        <button onclick="salaryRejectItem('${item.type}', ${item.id})" 
-                                                class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition">
-                                            <i class="fas fa-times"></i> Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    approvalList.innerHTML = html;
-                })
-                .catch(error => {
-                    console.error('Error loading approvals:', error);
-                    approvalList.innerHTML = `
-                        <div class="text-center py-8">
-                            <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-3"></i>
-                            <p class="text-gray-500">Error loading pending approvals.</p>
-                            <button onclick="loadSalaryApprovalItems()" class="mt-3 px-4 py-2 bg-purple-600 text-white rounded-lg">
-                                Try Again
+                            <p class="font-semibold text-gray-800">${record.employee_name}</p>
+                            <p class="text-sm text-gray-600">Amount: KES ${record.amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div class="flex gap-2 ml-4">
+                            <button onclick="window.approvePaymentRecord(${record.id})" 
+                                    class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button onclick="window.rejectPaymentRecord(${record.id})" 
+                                    class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition">
+                                <i class="fas fa-times"></i> Reject
                             </button>
                         </div>
-                    `;
-                });
+                    </div>
+                </div>
+            `;
+        });
+        approvalList.innerHTML = html;
+    };
+    
+    window.approvePaymentRecord = function(recordId) {
+        if (confirm('Approve this payment? It will be added to total payments.')) {
+            window.updatePaymentStatus(recordId, 'completed');
+            window.loadSalaryApprovalItems();
+            window.salaryShowToast('Payment approved and added to total!', 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        }
+    };
+    
+    window.rejectPaymentRecord = function(recordId) {
+        if (confirm('Reject this payment?')) {
+            window.updatePaymentStatus(recordId, 'rejected');
+            window.loadSalaryApprovalItems();
+            window.salaryShowToast('Payment rejected', 'info');
+            setTimeout(() => window.location.reload(), 1000);
+        }
+    };
+    
+    // Format number helper
+    window.salaryFormatNumber = function(value) {
+        return new Intl.NumberFormat('en-KE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(value);
+    };
+    
+    // Initialize performance chart
+    window.initSalaryPerformanceChart = function() {
+        const canvas = document.getElementById('salaryPerformanceChart');
+        if (!canvas) return;
+        
+        if (window.salaryPerformanceChartInstance) {
+            window.salaryPerformanceChartInstance.destroy();
         }
         
-        // Approve item
-        window.salaryApproveItem = function(type, id) {
-            if (!confirm(`Are you sure you want to approve this ${type}?`)) return;
-            
-            const typeLower = type.toLowerCase();
-            fetch(`/salary/${typeLower}/approve/${id}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        window.salaryPerformanceChartInstance = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Completed Payments (KES Thousands)',
+                    data: [125, 148, 167, 189, 210, 245],
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top' }
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    salaryShowToast('Item approved successfully!', 'success');
-                    loadSalaryApprovalItems();
-                    updateSalaryPendingCount();
-                } else {
-                    salaryShowToast(data.message || 'Error approving item', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                salaryShowToast('Error processing request', 'error');
-            });
-        };
-        
-        // Reject item
-        window.salaryRejectItem = function(type, id) {
-            const reason = prompt('Please provide a reason for rejection:');
-            if (!reason) return;
-            
-            const typeLower = type.toLowerCase();
-            fetch(`/salary/${typeLower}/reject/${id}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({ reason: reason })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    salaryShowToast('Item rejected successfully!', 'info');
-                    loadSalaryApprovalItems();
-                    updateSalaryPendingCount();
-                } else {
-                    salaryShowToast(data.message || 'Error rejecting item', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                salaryShowToast('Error processing request', 'error');
-            });
-        };
-        
-        // Update pending count
-        function updateSalaryPendingCount() {
-            fetch('{{ route("salary.pending.count") }}')
-                .then(response => response.json())
-                .then(data => {
-                    const pendingCount = document.getElementById('pendingCount');
-                    const metricsPendingCount = document.getElementById('salaryMetricsPendingCount');
-                    if (pendingCount) pendingCount.textContent = data.pending_count;
-                    if (metricsPendingCount) metricsPendingCount.textContent = data.pending_count;
-                })
-                .catch(error => console.error('Error updating count:', error));
-        }
-        
-        // Format number as currency
-        function salaryFormatNumber(value) {
-            return new Intl.NumberFormat('en-KE', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(value);
-        }
-        
-        // Initialize performance chart
-        function initSalaryPerformanceChart() {
-            const canvas = document.getElementById('salaryPerformanceChart');
-            if (!canvas) return;
-            
-            if (window.salaryPerformanceChartInstance) {
-                window.salaryPerformanceChartInstance.destroy();
-            }
-            
-            window.salaryPerformanceChartInstance = new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [{
-                        label: 'Payment Processing Time (hours)',
-                        data: [2.8, 2.6, 2.4, 2.3, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5],
-                        borderColor: '#4f46e5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Hours'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Close modals when clicking outside
-        document.addEventListener('click', function(event) {
-            const approvalModal = document.getElementById('salaryApprovalModal');
-            const metricsModal = document.getElementById('salaryMetricsModal');
-            
-            if (event.target === approvalModal) {
-                closeSalaryApprovalModal();
-            }
-            if (event.target === metricsModal) {
-                closeSalaryMetricsModal();
             }
         });
+    };
+    
+    // Close modals when clicking outside
+    document.addEventListener('click', function(event) {
+        const approvalModal = document.getElementById('salaryApprovalModal');
+        const metricsModal = document.getElementById('salaryMetricsModal');
         
-        // Close modals with Escape key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeSalaryApprovalModal();
-                closeSalaryMetricsModal();
-            }
-        });
+        if (event.target === approvalModal) window.closeSalaryApprovalModal();
+        if (event.target === metricsModal) window.closeSalaryMetricsModal();
+    });
+    
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            window.closeSalaryApprovalModal();
+            window.closeSalaryMetricsModal();
+        }
+    });
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function() {
+        window.loadSalaryData();
         
-        // Initial load
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedRole = localStorage.getItem('salary_user_role');
-            const role = (savedRole === 'Admin' || savedRole === 'Director') ? savedRole : 'Admin';
-            if (typeof window.renderSalaryQuickActions !== 'undefined') {
-                window.renderSalaryQuickActions(role);
-            }
-            updateSalaryPendingCount();
-        });
+        const savedRole = localStorage.getItem('salary_user_role');
+        const role = (savedRole === 'Admin' || savedRole === 'Director') ? savedRole : 'Admin';
+        if (typeof window.renderSalaryQuickActions !== 'undefined') {
+            window.renderSalaryQuickActions(role);
+        }
+    });
     </script>
 </body>
 </html>

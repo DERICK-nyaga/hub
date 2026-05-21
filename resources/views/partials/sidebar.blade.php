@@ -209,6 +209,13 @@
                             <span>System Settings</span>
                         </a>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link submenu-link admin-only" href="{{route('preferences.brightness')}}">
+                            <i class="fas fa-palette"></i>
+                            <span>Theme Settings</span>
+                        </a>
+                    </li>
                 </ul>
             </li>
             

@@ -14,6 +14,14 @@ return [
     |
     */
 
+    'sms' => [
+        'enabled' => env('SMS_ENABLED', false),
+        'api_key' => env('SMS_API_KEY'),
+        'api_secret' => env('SMS_API_SECRET'),
+        'sender_id' => env('SMS_SENDER_ID', 'PAYMENT'),
+        'api_url' => env('SMS_API_URL'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
