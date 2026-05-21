@@ -489,6 +489,10 @@ class DashboardController extends Controller
 
     public function sidebar(Request $request)
     {
+        if (!auth()->check()) {
+            return view('welcome');
+        }
+        
         if ($this->isApiRequest($request)) {
             return response()->json([
                 'success' => true,
