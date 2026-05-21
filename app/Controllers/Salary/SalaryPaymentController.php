@@ -12,9 +12,14 @@ use App\Models\SalaryApprovalLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Services\Salary\DeductionRuleService;
+use App\Traits\ApprovalPeriodTrait;
 
 class SalaryPaymentController extends Controller
 {
+
+    use ApprovalPeriodTrait;
+
 
     public function index(Request $request)
     {
@@ -52,15 +57,20 @@ class SalaryPaymentController extends Controller
             ->sum('net_amount');
         $avgPayment = SalaryPayment::where('status', 'processed')->avg('net_amount');
         
+        // Get approval info
+        $approvalInfo = $this->getApprovalInfo();
+        
         return view('salary.payments.index', compact(
-            'payments', 'totalPayments', 'pendingApprovals', 'monthlyTotal', 'avgPayment'
+            'payments', 'totalPayments', 'pendingApprovals', 'monthlyTotal', 'avgPayment', 'approvalInfo'
         ));
     }
     
     public function create()
     {
         $employees = Employee::where('status', 'active')->get();
-        return view('salary.payments.create', compact('employees'));
+        $approvalInfo = $this->getApprovalInfo();
+        
+        return view('salary.payments.create', compact('employees', 'approvalInfo'));
     }
     
     private function syncEmployeeToSalaryTable($employeeId)
@@ -87,30 +97,100 @@ class SalaryPaymentController extends Controller
         
         return $salaryEmployee;
     }
+
+       /**
+     * Get all pending deductions for an employee
+     */
+    private function getEmployeePendingDeductions($employeeId)
+    {
+        // Get pending deductions that are applied
+        $deductions = SalaryDeduction::where('employee_id', $employeeId)
+            ->where('status', 'applied')
+            ->with('schedule')
+            ->get();
+        
+        $totalDeduction = 0;
+        $deductionDetails = [];
+        
+        foreach ($deductions as $deduction) {
+            // Check if this deduction has installment schedules
+            if ($deduction->number_of_installments > 0) {
+                $pendingSchedules = $deduction->schedule()
+                    ->where('status', 'pending')
+                    ->where('scheduled_date', '<=', now()->endOfMonth())
+                    ->get();
+                
+                foreach ($pendingSchedules as $schedule) {
+                    $totalDeduction += $schedule->amount;
+                    $deductionDetails[] = [
+                        'deduction_id' => $deduction->id,
+                        'reason' => $deduction->reason,
+                        'amount' => $schedule->amount,
+                        'installment' => $schedule->installment_number . '/' . $schedule->total_installments,
+                        'due_date' => $schedule->scheduled_date
+                    ];
+                }
+            } else {
+                // Single deduction
+                $totalDeduction += $deduction->amount;
+                $deductionDetails[] = [
+                    'deduction_id' => $deduction->id,
+                    'reason' => $deduction->reason,
+                    'amount' => $deduction->amount,
+                    'installment' => 'Full',
+                    'due_date' => $deduction->deduction_date
+                ];
+            }
+        }
+        
+        return [
+            'total' => $totalDeduction,
+            'details' => $deductionDetails,
+            'count' => count($deductionDetails)
+        ];
+    }
     
+    /**
+     * Create a new payment with integrated deductions
+     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'type' => 'required|in:regular,advance,adjustment',
-            'amount' => 'required|numeric|min:0',
-            'payment_method' => 'required|in:mpesa,bank_transfer',
-            'payment_date' => 'required|date',
-            'notes' => 'nullable|string',
-        ]);
-        
-        DB::beginTransaction();
-        
         try {
+            $validated = $request->validate([
+                'employee_id' => 'required|exists:employees,id',
+                'type' => 'required|in:regular,advance,adjustment,bonus',
+                'amount' => 'required|numeric|min:0',
+                'payment_method' => 'required|in:mpesa,bank_transfer',
+                'payment_date' => 'required|date',
+                'notes' => 'nullable|string',
+                'include_deductions' => 'boolean'
+            ]);
+            
+            DB::beginTransaction();
+            
             $salaryEmployee = $this->syncEmployeeToSalaryTable($validated['employee_id']);
             
             if (!$salaryEmployee) {
-                throw new \Exception('Employee not found in main table');
+                throw new \Exception('Employee not found in salary table');
             }
             
-            $mainEmployee = Employee::find($validated['employee_id']);
-            $deductionsTotal = $mainEmployee->deduction_balance ?? 0;
+            // Check if employee already has payment for this month
+            $monthlyPaymentCheck = $this->hasMonthlyPayment($salaryEmployee->id, $validated['type']);
+            if ($monthlyPaymentCheck['exists']) {
+                throw new \Exception($monthlyPaymentCheck['message']);
+            }
+            
+            // Get pending deductions
+            $deductions = $this->getEmployeePendingDeductions($salaryEmployee->id);
+            $deductionsTotal = $validated['include_deductions'] ? $deductions['total'] : 0;
             $netAmount = $validated['amount'] - $deductionsTotal;
+            
+            // Ensure net amount is not negative
+            if ($netAmount < 0) {
+                throw new \Exception("Net amount cannot be negative. Gross: " . number_format($validated['amount'], 2) . 
+                    ", Deductions: " . number_format($deductionsTotal, 2));
+            }
+            
             $reference = 'PAY-' . strtoupper(uniqid());
             
             $payment = SalaryPayment::create([
@@ -126,22 +206,49 @@ class SalaryPaymentController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
             
+            // Link deductions to this payment
+            if ($validated['include_deductions'] && !empty($deductions['details'])) {
+                foreach ($deductions['details'] as $deductionDetail) {
+                    $deduction = SalaryDeduction::find($deductionDetail['deduction_id']);
+                    if ($deduction) {
+                        $deduction->payment_id = $payment->id;
+                        $deduction->save();
+                        
+                        // Mark the schedule as deducted if it's an installment
+                        if ($deduction->number_of_installments > 0) {
+                            $schedule = $deduction->schedule()
+                                ->where('status', 'pending')
+                                ->where('scheduled_date', '<=', now()->endOfMonth())
+                                ->first();
+                            if ($schedule) {
+                                $schedule->status = 'deducted';
+                                $schedule->payment_id = $payment->id;
+                                $schedule->save();
+                            }
+                        }
+                    }
+                }
+            }
+            
             SalaryApprovalLog::create([
                 'approvable_type' => SalaryPayment::class,
                 'approvable_id' => $payment->id,
                 'user_id' => Auth::id(),
                 'action' => 'requested',
-                'comments' => 'Payment request submitted for approval',
+                'comments' => "Payment request submitted for approval. Deductions: KES " . number_format($deductionsTotal, 2),
             ]);
             
             DB::commit();
             
             return redirect()->route('salary.payments.index')
-                ->with('success', 'Payment request created successfully. Waiting for approval.');
+                ->with('success', 'Payment request created successfully. Waiting for approval.')
+                ->with('deductions_info', $deductions);
                 
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to create payment: ' . $e->getMessage());
+            return back()->with('error', 'Failed to create payment: ' . $e->getMessage())->withInput();
         }
     }
     
@@ -157,38 +264,83 @@ class SalaryPaymentController extends Controller
         return view('salary.payments.print', compact('payment'));
     }
 
+    /**
+     * Approve payment with role-based restrictions
+     */
     public function approve($id, Request $request)
     {
         try {
-            \Log::info('Approve payment attempt', ['payment_id' => $id]);
+            \Log::info('Approve payment attempt', ['payment_id' => $id, 'user_id' => Auth::id()]);
+            
+            // Check approval permissions
+            $approvalCheck = $this->canApprove();
+            if (!$approvalCheck['can_approve']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $approvalCheck['message']
+                ], 403);
+            }
             
             $payment = SalaryPayment::with('employee')->find($id);
             
             if (!$payment) {
-                \Log::error('Payment not found', ['payment_id' => $id]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Payment not found'
                 ], 404);
             }
             
-            \Log::info('Payment found', [
-                'payment_id' => $payment->id,
-                'current_status' => $payment->status,
-                'employee_id' => $payment->employee_id
-            ]);
+            // Check if payment is already approved
+            if ($payment->status !== 'pending_approval') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment cannot be approved. Current status: ' . $payment->status
+                ], 422);
+            }
+            
+            // Determine approval level
+            $isDirector = $this->isDirector();
+            $isAdmin = $this->isAdmin();
+            
+            $approvalLevel = $isDirector ? 'director' : ($isAdmin ? 'admin' : 'unknown');
             
             // Update payment status
             $payment->status = 'approved';
             $payment->approved_at = now();
             $payment->approved_by = auth()->id();
+            $payment->approval_level = $approvalLevel;
             $payment->save();
             
-            \Log::info('Payment approved successfully', ['payment_id' => $id]);
+            // Process linked deductions
+            if ($payment->deductions_total > 0) {
+                $deductions = SalaryDeduction::where('payment_id', $payment->id)->get();
+                foreach ($deductions as $deduction) {
+                    // Mark deduction as processed
+                    $deduction->status = 'processed';
+                    $deduction->processed_at = now();
+                    $deduction->save();
+                }
+            }
+            
+            // Create approval log
+            SalaryApprovalLog::create([
+                'approvable_type' => SalaryPayment::class,
+                'approvable_id' => $payment->id,
+                'user_id' => Auth::id(),
+                'action' => 'approved',
+                'comments' => "Payment approved by " . ucfirst($approvalLevel) . ". Deductions applied: KES " . number_format($payment->deductions_total, 2),
+            ]);
+            
+            \Log::info('Payment approved successfully', [
+                'payment_id' => $id, 
+                'approved_by' => Auth::id(),
+                'approval_level' => $approvalLevel
+            ]);
             
             return response()->json([
                 'success' => true,
-                'message' => 'Payment approved successfully'
+                'message' => 'Payment approved successfully',
+                'approval_level' => $approvalLevel
             ]);
             
         } catch (\Exception $e) {
@@ -538,5 +690,337 @@ class SalaryPaymentController extends Controller
         }
         
         return response()->json(['success' => true]);
+    }
+
+
+     /**
+     * Process payment with deduction rules
+     */
+    public function processPaymentWithDeduction(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'gross_salary' => 'required|numeric|min:0',
+            'deduction_amount' => 'required|numeric|min:0',
+            'deduction_reason' => 'required|string',
+            'deduction_type' => 'required|in:penalty,loan,advance_recovery,loss,other',
+            'payment_method' => 'required|in:mpesa,bank_transfer',
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string',
+        ]);
+        
+        DB::beginTransaction();
+        
+        try {
+            // Get salary employee
+            $salaryEmployee = $this->syncEmployeeToSalaryTable($validated['employee_id']);
+            
+            if (!$salaryEmployee) {
+                throw new \Exception('Employee not found');
+            }
+            
+            // Process deduction based on rules
+            $deduction = $this->deductionRuleService->applyDeduction(
+                $salaryEmployee,
+                $validated['deduction_amount'],
+                $validated['deduction_reason'],
+                $validated['deduction_type']
+            );
+            
+            // Calculate net payable amount
+            $payableInfo = $this->deductionRuleService->calculateNetPayable(
+                $validated['gross_salary'],
+                $validated['deduction_amount'],
+                $salaryEmployee
+            );
+            
+            // Check if we can proceed
+            if (!$payableInfo['can_proceed']) {
+                return response()->json([
+                    'success' => false,
+                    'requires_dismissal' => true,
+                    'message' => $payableInfo['message'],
+                    'deduction' => $deduction
+                ], 422);
+            }
+            
+            // Create payment record
+            $reference = 'PAY-' . strtoupper(uniqid());
+            
+            $payment = SalaryPayment::create([
+                'employee_id' => $salaryEmployee->id,
+                'deduction_id' => $deduction->id,
+                'amount' => $validated['gross_salary'],
+                'deductions_total' => $payableInfo['deduction_amount'],
+                'net_amount' => $payableInfo['net_amount'],
+                'type' => $validated['deduction_type'],
+                'payment_method' => $validated['payment_method'],
+                'transaction_reference' => $reference,
+                'status' => 'pending_approval',
+                'payment_date' => $validated['payment_date'],
+                'notes' => $validated['notes'] ?? null,
+            ]);
+            
+            // Create approval log
+            SalaryApprovalLog::create([
+                'approvable_type' => SalaryPayment::class,
+                'approvable_id' => $payment->id,
+                'user_id' => Auth::id(),
+                'action' => 'requested',
+                'comments' => "Payment request submitted. Deduction: KES " . number_format($validated['deduction_amount'], 2),
+            ]);
+            
+            DB::commit();
+            
+            // Return success with payment details
+            return response()->json([
+                'success' => true,
+                'payment' => [
+                    'reference' => $reference,
+                    'gross_salary' => number_format($validated['gross_salary'], 2),
+                    'deduction_amount' => number_format($payableInfo['deduction_amount'], 2),
+                    'net_amount' => number_format($payableInfo['net_amount'], 2),
+                    'message' => $payableInfo['message']
+                ],
+                'redirect_url' => route('salary.payments.show-payable', $payment->id)
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process payment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Show the payable amount to employee before confirmation
+     */
+    public function showPayableAmount($id)
+    {
+        $payment = SalaryPayment::with('employee', 'deduction')->findOrFail($id);
+        
+        return view('salary.payments.payable-amount', [
+            'payment' => $payment,
+            'employee' => $payment->employee,
+            'deduction' => $payment->deduction,
+            'gross_amount' => $payment->amount,
+            'deduction_amount' => $payment->deductions_total,
+            'net_amount' => $payment->net_amount,
+            'installment_info' => $payment->deduction ? [
+                'installment_amount' => $payment->deduction->installment_amount,
+                'total_installments' => $payment->deduction->number_of_installments,
+                'completed_installments' => SalaryPaymentSchedule::where('deduction_id', $payment->deduction_id)
+                    ->where('status', 'paid')
+                    ->count()
+            ] : null
+        ]);
+    }
+    
+    /**
+     * Show payment preview with deductions
+     */
+    public function preview($employeeId)
+    {
+        try {
+            $employee = Employee::findOrFail($employeeId);
+            $salaryEmployee = $this->syncEmployeeToSalaryTable($employeeId);
+            $deductions = $this->getEmployeePendingDeductions($salaryEmployee->id);
+            
+            return response()->json([
+                'success' => true,
+                'employee' => $employee,
+                'pending_deductions' => $deductions,
+                'has_deductions' => $deductions['count'] > 0,
+                'can_process_payment' => !$this->hasMonthlyPayment($salaryEmployee->id)['exists']
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get approval information for display
+     */
+    public function approvalInfo()
+    {
+        return response()->json([
+            'success' => true,
+            'approval_info' => $this->getApprovalInfo(),
+            'user_role' => Auth::user()->roles->first()->name ?? 'unknown'
+        ]);
+    }
+    
+    /**
+     * Confirm payment and proceed
+     */
+    public function confirmPayment(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'confirmation' => 'required|accepted'
+        ]);
+        
+        DB::beginTransaction();
+        
+        try {
+            $payment = SalaryPayment::findOrFail($id);
+            
+            if ($payment->status !== 'pending_approval') {
+                throw new \Exception('Payment cannot be confirmed at this stage');
+            }
+            
+            // Update payment status
+            $payment->status = 'approved';
+            $payment->approved_at = now();
+            $payment->approved_by = auth()->id();
+            $payment->save();
+            
+            // Update deduction schedules if this payment covers an installment
+            if ($payment->deduction_id) {
+                $schedule = SalaryPaymentSchedule::where('deduction_id', $payment->deduction_id)
+                    ->where('status', 'pending')
+                    ->where('due_date', '<=', now()->endOfMonth())
+                    ->first();
+                
+                if ($schedule) {
+                    $schedule->status = 'paid';
+                    $schedule->paid_at = now();
+                    $schedule->payment_id = $payment->id;
+                    $schedule->save();
+                    
+                    // Check if all installments are paid
+                    $remainingSchedules = SalaryPaymentSchedule::where('deduction_id', $payment->deduction_id)
+                        ->where('status', 'pending')
+                        ->count();
+                    
+                    if ($remainingSchedules == 0) {
+                        $deduction = SalaryDeduction::find($payment->deduction_id);
+                        $deduction->status = 'completed';
+                        $deduction->save();
+                    }
+                }
+            }
+            
+            // Create approval log
+            SalaryApprovalLog::create([
+                'approvable_type' => SalaryPayment::class,
+                'approvable_id' => $payment->id,
+                'user_id' => Auth::id(),
+                'action' => 'confirmed',
+                'comments' => 'Payment confirmed and processed',
+            ]);
+            
+            DB::commit();
+            
+            return redirect()->route('salary.payments.receipt', $payment->id)
+                ->with('success', 'Payment processed successfully! Net amount: KES ' . number_format($payment->net_amount, 2));
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Failed to confirm payment: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Process dismissal for gross misconduct
+     */
+    public function processDismissal(Request $request, $deductionId)
+    {
+        $validated = $request->validate([
+            'dismissal_letter' => 'required|file|mimes:pdf,doc,docx|max:2048',
+            'notes' => 'nullable|string'
+        ]);
+        
+        DB::beginTransaction();
+        
+        try {
+            $deduction = SalaryDeduction::findOrFail($deductionId);
+            
+            if (!$deduction->requires_dismissal) {
+                throw new \Exception('This deduction does not require dismissal');
+            }
+            
+            // Store dismissal letter
+            $dismissalPath = $validated['dismissal_letter']->store('dismissal_letters', 'public');
+            
+            // Update deduction status
+            $deduction->status = 'dismissal_processed';
+            $deduction->dismissal_letter_path = $dismissalPath;
+            $deduction->dismissal_notes = $validated['notes'] ?? null;
+            $deduction->dismissal_processed_at = now();
+            $deduction->dismissal_processed_by = auth()->id();
+            $deduction->save();
+            
+            // Update employee status
+            $employee = SalaryEmployee::find($deduction->employee_id);
+            if ($employee) {
+                $employee->status = 'terminated';
+                $employee->termination_date = now();
+                $employee->termination_reason = "Gross misconduct - Deduction of KES " . number_format($deduction->amount, 2);
+                $employee->save();
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Dismissal processed successfully. Employee terminated due to gross misconduct.',
+                'dismissal_letter' => $dismissalPath
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process dismissal: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get employee balance after applying deduction rules
+     */
+    public function previewDeduction(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'gross_salary' => 'required|numeric|min:0',
+            'deduction_amount' => 'required|numeric|min:0'
+        ]);
+        
+        try {
+            $salaryEmployee = $this->syncEmployeeToSalaryTable($validated['employee_id']);
+            
+            if (!$salaryEmployee) {
+                return response()->json(['error' => 'Employee not found'], 404);
+            }
+            
+            $payableInfo = $this->deductionRuleService->calculateNetPayable(
+                $validated['gross_salary'],
+                $validated['deduction_amount'],
+                $salaryEmployee
+            );
+            
+            return response()->json([
+                'success' => true,
+                'gross_salary' => number_format($validated['gross_salary'], 2),
+                'deduction_amount' => number_format($payableInfo['deduction_amount'], 2),
+                'net_amount' => number_format($payableInfo['net_amount'], 2),
+                'message' => $payableInfo['message'],
+                'requires_dismissal' => $payableInfo['requires_full_payment'] ?? false,
+                'installment_info' => $payableInfo['installment_info'] ?? null
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }
