@@ -14,6 +14,11 @@ class NotificationLog extends Model
         'payment_type',
         'reminder_type',
         'days_until_due',
+        'type',
+        'recipient',
+        'subject',
+        'status',
+        'error_message',
         'sent_at',
         'station_id',
         'provider_id'
