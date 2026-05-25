@@ -2,372 +2,361 @@
 
 namespace App\Services\Salary;
 
-use App\Models\SalaryDeduction;
-use App\Models\SalaryPaymentSchedule;
 use App\Models\SalaryEmployee;
-use Illuminate\Support\Facades\DB;
+use App\Models\SalaryDeduction;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Exception;
 
 class DeductionRuleService
 {
-    /**
-     * Process deduction based on amount rules
-     * 
-     * @param float $deductionAmount
-     * @param SalaryEmployee $employee
-     * @param string $reason
-     * @param string $type
-     * @return array
-     */
-    public function processDeductionRules($deductionAmount, SalaryEmployee $employee, $reason, $type)
+    const MAX_DEDUCTION_AMOUNT = 45000;
+    const MAX_CUMULATIVE_DEDUCTION_AMOUNT = 45000;
+    const SUPER_DEDUCTION_THRESHOLD = 45000;
+    const DIRECTOR_APPROVAL_THRESHOLD = 100000;
+    const INSTALLMENT_THRESHOLD = 10000;
+    const MAX_INSTALLMENTS = 12;
+    const MIN_INSTALLMENT_AMOUNT = 1000;
+    const DISMISSAL_THRESHOLD = 30000;
+    
+    public function validateDeductionAmount($amount, $user = null)
     {
         try {
-            $result = [
-                'action' => '',
-                'message' => '',
-                'deduction_type' => '',
-                'installments' => [],
-                'requires_dismissal' => false,
-                'deduction_per_month' => 0,
-                'number_of_months' => 0,
-                'status' => 'pending'
-            ];
-
-            // Validate input
-            if ($deductionAmount <= 0) {
-                throw new Exception('Deduction amount must be greater than 0.');
-            }
-
-            // Rule 1: Deduction <= 5000 - deduct full amount
-            if ($deductionAmount <= 5000) {
-                $result['action'] = 'full_deduction';
-                $result['message'] = "Deduction of KES " . number_format($deductionAmount, 2) . " will be applied in full.";
-                $result['deduction_type'] = 'single';
-                $result['deduction_per_month'] = $deductionAmount;
-                $result['number_of_months'] = 1;
-                $result['installments'][] = [
-                    'month' => 1,
-                    'amount' => $deductionAmount,
-                    'due_date' => now()->endOfMonth()
-                ];
-            }
-            // Rule 2: Deduction >= 10000 - deduct 50/50 per month (exactly 10000)
-            elseif ($deductionAmount == 10000) {
-                $halfAmount = $deductionAmount / 2;
-                $result['action'] = 'fifty_fifty';
-                $result['message'] = "Deduction of KES " . number_format($deductionAmount, 2) . " will be split into 2 equal monthly installments of KES " . number_format($halfAmount, 2);
-                $result['deduction_type'] = 'installment';
-                $result['deduction_per_month'] = $halfAmount;
-                $result['number_of_months'] = 2;
-                
-                for ($i = 1; $i <= 2; $i++) {
-                    $result['installments'][] = [
-                        'month' => $i,
-                        'amount' => $halfAmount,
-                        'due_date' => now()->addMonths($i)->endOfMonth()
-                    ];
-                }
-            }
-            // Rule 3: Deduction >= 10001 and <= 15000 - deduct in 3 months equally
-            elseif ($deductionAmount >= 10001 && $deductionAmount <= 15000) {
-                $monthlyAmount = $deductionAmount / 3;
-                $result['action'] = 'three_months';
-                $result['message'] = "Deduction of KES " . number_format($deductionAmount, 2) . " will be split into 3 equal monthly installments of KES " . number_format($monthlyAmount, 2);
-                $result['deduction_type'] = 'installment';
-                $result['deduction_per_month'] = $monthlyAmount;
-                $result['number_of_months'] = 3;
-                
-                for ($i = 1; $i <= 3; $i++) {
-                    $result['installments'][] = [
-                        'month' => $i,
-                        'amount' => $monthlyAmount,
-                        'due_date' => now()->addMonths($i)->endOfMonth()
-                    ];
-                }
-            }
-            // Rule 4: Deduction >= 15001 and <= 25000 - deduct for 5 months equally
-            elseif ($deductionAmount >= 15001 && $deductionAmount <= 25000) {
-                $monthlyAmount = $deductionAmount / 5;
-                $result['action'] = 'five_months';
-                $result['message'] = "Deduction of KES " . number_format($deductionAmount, 2) . " will be split into 5 equal monthly installments of KES " . number_format($monthlyAmount, 2);
-                $result['deduction_type'] = 'installment';
-                $result['deduction_per_month'] = $monthlyAmount;
-                $result['number_of_months'] = 5;
-                
-                for ($i = 1; $i <= 5; $i++) {
-                    $result['installments'][] = [
-                        'month' => $i,
-                        'amount' => $monthlyAmount,
-                        'due_date' => now()->addMonths($i)->endOfMonth()
-                    ];
-                }
-            }
-            // Rule 5: Deduction >= 30000 - gross misconduct
-            elseif ($deductionAmount >= 30000) {
-                $result['action'] = 'gross_misconduct';
-                $result['message'] = "⚠️ GROSS MISCONDUCT: Deduction of KES " . number_format($deductionAmount, 2) . " requires full payment or dismissal letter.";
-                $result['deduction_type'] = 'gross_misconduct';
-                $result['requires_dismissal'] = true;
-                $result['status'] = 'pending_dismissal';
-                $result['deduction_per_month'] = $deductionAmount;
-                $result['number_of_months'] = 0;
-            }
-
-            return $result;
+            $maxAmount = 45000;
+            $superDeductionThreshold = 100000;
             
-        } catch (Exception $e) {
-            Log::error('Error processing deduction rules: ' . $e->getMessage(), [
-                'deduction_amount' => $deductionAmount,
-                'employee_id' => $employee->id ?? null,
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Apply deduction to employee's balance and create payment schedules
-     * 
-     * @param SalaryEmployee $employee
-     * @param float $deductionAmount
-     * @param string $reason
-     * @param string $type
-     * @return SalaryDeduction
-     * @throws Exception
-     */
-    public function applyDeduction($employee, $deductionAmount, $reason, $type)
-    {
-        if (!$employee instanceof SalaryEmployee) {
-            throw new Exception('Invalid employee object provided.');
-        }
-        
-        if ($deductionAmount <= 0) {
-            throw new Exception('Deduction amount must be greater than 0.');
-        }
-        
-        if (empty($reason)) {
-            throw new Exception('Deduction reason is required.');
-        }
-        
-        DB::beginTransaction();
-        
-        try {
-            // Process deduction rules
-            $ruleResult = $this->processDeductionRules($deductionAmount, $employee, $reason, $type);
+            $isAdminOrDirector = false;
+            $userRole = 'user';
             
-            // Create main deduction record
-            $deduction = SalaryDeduction::create([
-                'employee_id' => $employee->id,
-                'reason' => $reason,
-                'amount' => $deductionAmount,
-                'type' => $type,
-                'deduction_date' => now(),
-                'description' => $ruleResult['message'],
-                'status' => $ruleResult['status'],
-                'deduction_type' => $ruleResult['deduction_type'],
-                'number_of_installments' => $ruleResult['number_of_months'],
-                'installment_amount' => $ruleResult['deduction_per_month'],
-                'requires_dismissal' => $ruleResult['requires_dismissal'],
-                'message' => $ruleResult['message']
-            ]);
-            
-            if (!$deduction) {
-                throw new Exception('Failed to create deduction record.');
-            }
-            
-            // Create payment schedules for installments if not gross misconduct
-            if (!$ruleResult['requires_dismissal'] && $ruleResult['number_of_months'] > 0) {
-                $remainingBalance = $deductionAmount;
-                
-                foreach ($ruleResult['installments'] as $index => $installment) {
-                    $remainingBalance -= $installment['amount'];
-                    
-                    $schedule = SalaryPaymentSchedule::create([
-                        'deduction_id' => $deduction->id,
-                        'employee_id' => $employee->id,
-                        'amount' => $installment['amount'],
-                        'installment_number' => $installment['month'],
-                        'total_installments' => $ruleResult['number_of_months'],
-                        'scheduled_date' => $installment['due_date'],
-                        'status' => 'pending',
-                        'remaining_balance' => max(0, $remainingBalance),
-                        'type' => $type
-                    ]);
-                    
-                    if (!$schedule) {
-                        throw new Exception("Failed to create schedule for installment {$installment['month']}");
-                    }
+            if ($user) {
+                if (method_exists($user, 'hasRole')) {
+                    $isAdminOrDirector = $user->hasRole('admin') || $user->hasRole('director');
+                    if ($user->hasRole('director')) $userRole = 'director';
+                    elseif ($user->hasRole('admin')) $userRole = 'admin';
                 }
             }
             
-            DB::commit();
-            
-            Log::info('Deduction applied successfully', [
-                'deduction_id' => $deduction->id,
-                'employee_id' => $employee->id,
-                'amount' => $deductionAmount,
-                'action' => $ruleResult['action']
-            ]);
-            
-            return $deduction;
-            
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to apply deduction', [
-                'employee_id' => $employee->id ?? null,
-                'amount' => $deductionAmount,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Calculate net payable amount after deductions
-     * 
-     * @param float $grossSalary
-     * @param float $deductionAmount
-     * @param SalaryEmployee $employee
-     * @return array
-     */
-    public function calculateNetPayable($grossSalary, $deductionAmount, $employee)
-    {
-        try {
-            if ($grossSalary < 0) {
-                throw new Exception('Gross salary cannot be negative.');
-            }
-            
-            if ($deductionAmount < 0) {
-                throw new Exception('Deduction amount cannot be negative.');
-            }
-            
-            $ruleResult = $this->processDeductionRules($deductionAmount, $employee, '', '');
-            
-            if ($ruleResult['requires_dismissal']) {
+            if (!is_numeric($amount)) {
                 return [
-                    'net_amount' => 0,
-                    'deduction_amount' => $deductionAmount,
-                    'gross_salary' => $grossSalary,
-                    'message' => $ruleResult['message'],
-                    'requires_full_payment' => true,
-                    'can_proceed' => false,
-                    'installment_info' => null
+                    'valid' => false,
+                    'message' => 'Amount must be a numeric value.'
                 ];
             }
             
-            // Get pending installments for this employee for the current month
-            $pendingSchedules = SalaryPaymentSchedule::where('employee_id', $employee->id)
-                ->where('status', 'pending')
-                ->where('scheduled_date', '<=', now()->endOfMonth())
-                ->sum('amount');
-            
-            $totalDeductionThisMonth = $pendingSchedules + $ruleResult['deduction_per_month'];
-            $netAmount = $grossSalary - $totalDeductionThisMonth;
-            
-            $installmentInfo = null;
-            if ($ruleResult['number_of_months'] > 0) {
-                // Get the current deduction ID if exists (for completed installments count)
-                $completedCount = 0;
-                $currentDeduction = SalaryDeduction::where('employee_id', $employee->id)
-                    ->where('amount', $deductionAmount)
-                    ->latest()
-                    ->first();
-                
-                if ($currentDeduction) {
-                    $completedCount = SalaryPaymentSchedule::where('deduction_id', $currentDeduction->id)
-                        ->where('status', 'paid')
-                        ->count();
-                }
-                
-                $installmentInfo = [
-                    'installment_amount' => $ruleResult['deduction_per_month'],
-                    'total_installments' => $ruleResult['number_of_months'],
-                    'remaining_balance' => max(0, $deductionAmount - ($ruleResult['deduction_per_month'] * $completedCount)),
-                    'completed_installments' => $completedCount,
-                    'remaining_installments' => max(0, $ruleResult['number_of_months'] - $completedCount)
+            if ($amount <= 0) {
+                return [
+                    'valid' => false,
+                    'message' => 'Amount must be greater than zero.'
                 ];
+            }
+            
+            if ($amount > $superDeductionThreshold) {
+                if ($isAdminOrDirector) {
+                    return [
+                        'valid' => true,
+                        'requires_super_deduction' => false,
+                        'auto_approve' => false,
+                        'requires_director_approval' => $userRole !== 'director',
+                        'message' => "Amount of KES " . number_format($amount, 2) . 
+                                    " exceeds the super deduction threshold. As an " . $userRole . 
+                                    ", you can process this, but it may require additional approval."
+                    ];
+                } else {
+                    return [
+                        'valid' => false,
+                        'requires_super_deduction' => true,
+                        'auto_approve' => false,
+                        'requires_director_approval' => true,
+                        'message' => "Deduction amount of KES " . number_format($amount, 2) . 
+                                    " exceeds the super deduction threshold of KES " . 
+                                    number_format($superDeductionThreshold, 2) . ". " .
+                                    "Please contact HR or Administration to process this deduction."
+                    ];
+                }
+            }
+            
+            if ($amount > $maxAmount) {
+                if ($isAdminOrDirector) {
+                    return [
+                        'valid' => true,
+                        'requires_super_deduction' => false,
+                        'auto_approve' => true,
+                        'requires_director_approval' => false,
+                        'message' => "Amount of KES " . number_format($amount, 2) . 
+                                    " exceeds the standard limit of KES " . number_format($maxAmount, 2) . 
+                                    ". As an " . $userRole . ", you can process this directly."
+                    ];
+                } else {
+                    return [
+                        'valid' => false,
+                        'requires_super_deduction' => true,
+                        'auto_approve' => false,
+                        'requires_director_approval' => false,
+                        'message' => "Deduction amount of KES " . number_format($amount, 2) . 
+                                    " exceeds the maximum allowed single deduction of KES " . 
+                                    number_format($maxAmount, 2) . ". " .
+                                    "Please contact HR or Administration to process this deduction."
+                    ];
+                }
             }
             
             return [
-                'net_amount' => max(0, $netAmount),
-                'deduction_amount' => $totalDeductionThisMonth,
-                'gross_salary' => $grossSalary,
-                'installment_info' => $installmentInfo,
-                'message' => $ruleResult['message'],
-                'can_proceed' => true,
-                'requires_full_payment' => false
+                'valid' => true,
+                'requires_super_deduction' => false,
+                'message' => 'Amount validation passed.'
             ];
             
         } catch (Exception $e) {
-            Log::error('Error calculating net payable: ' . $e->getMessage(), [
-                'gross_salary' => $grossSalary,
-                'deduction_amount' => $deductionAmount,
-                'employee_id' => $employee->id ?? null,
-                'trace' => $e->getTraceAsString()
+            Log::error('Error validating deduction amount', [
+                'amount' => $amount,
+                'error' => $e->getMessage()
             ]);
             
             return [
-                'net_amount' => 0,
-                'deduction_amount' => $deductionAmount,
-                'gross_salary' => $grossSalary,
-                'message' => 'Error calculating payment: ' . $e->getMessage(),
-                'can_proceed' => false,
-                'requires_full_payment' => false,
-                'installment_info' => null
+                'valid' => false,
+                'message' => 'Error validating amount: ' . $e->getMessage()
             ];
         }
     }
     
-    /**
-     * Get deduction summary for an employee
-     * 
-     * @param int $employeeId
-     * @return array
-     */
-    public function getEmployeeDeductionSummary($employeeId)
+    private function isAdmin($user = null)
+    {
+        if ($user === null) {
+            $user = Auth::user();
+        }
+        
+        if (!$user) return false;
+        
+        if (method_exists($user, 'hasRole')) {
+            return $user->hasRole('admin') || $user->hasRole('administrator');
+        }
+        
+        if (isset($user->role)) {
+            return in_array($user->role, ['admin', 'administrator']);
+        }
+        
+        if (isset($user->user_type)) {
+            return in_array($user->user_type, ['admin', 'administrator']);
+        }
+        
+        return false;
+    }
+    
+    private function isDirector($user = null)
+    {
+        if ($user === null) {
+            $user = Auth::user();
+        }
+        
+        if (!$user) return false;
+        
+        if (method_exists($user, 'hasRole')) {
+            return $user->hasRole('director');
+        }
+        
+        if (isset($user->role)) {
+            return $user->role === 'director';
+        }
+        
+        if (isset($user->user_type)) {
+            return $user->user_type === 'director';
+        }
+        
+        return false;
+    }
+    
+    public function processDeductionRules($amount, $employee, $reason, $type)
     {
         try {
-            $totalDeductions = SalaryDeduction::where('employee_id', $employeeId)
-                ->whereIn('status', ['applied', 'pending'])
-                ->sum('amount');
-            
-            $activeInstallments = SalaryPaymentSchedule::where('employee_id', $employeeId)
-                ->where('status', 'pending')
-                ->where('scheduled_date', '>=', now())
-                ->count();
-            
-            $nextDueAmount = SalaryPaymentSchedule::where('employee_id', $employeeId)
-                ->where('status', 'pending')
-                ->where('scheduled_date', '>=', now())
-                ->orderBy('scheduled_date')
-                ->value('amount');
-            
-            return [
-                'total_pending' => $totalDeductions,
-                'active_installments' => $activeInstallments,
-                'next_due_amount' => $nextDueAmount ?? 0,
-                'next_due_date' => SalaryPaymentSchedule::where('employee_id', $employeeId)
-                    ->where('status', 'pending')
-                    ->where('scheduled_date', '>=', now())
-                    ->orderBy('scheduled_date')
-                    ->value('scheduled_date')
+            $result = [
+                'requires_dismissal' => false,
+                'deduction_type' => 'single',
+                'number_of_months' => 1,
+                'deduction_per_month' => $amount,
+                'message' => ''
             ];
             
+            if ($amount >= self::DISMISSAL_THRESHOLD) {
+                $result['requires_dismissal'] = true;
+                $result['deduction_type'] = 'dismissal_pending';
+                $result['message'] = "Amount of KES " . number_format($amount, 2) . 
+                                     " exceeds the dismissal threshold of KES " . 
+                                     number_format(self::DISMISSAL_THRESHOLD, 2) . 
+                                     ". This requires HR review and possible dismissal letter.";
+                return $result;
+            }
+            
+            if ($amount > self::INSTALLMENT_THRESHOLD) {
+                $numberOfMonths = ceil($amount / self::MIN_INSTALLMENT_AMOUNT);
+                $numberOfMonths = min($numberOfMonths, self::MAX_INSTALLMENTS);
+                
+                $perMonthAmount = round($amount / $numberOfMonths, 2);
+                
+                if ($perMonthAmount < self::MIN_INSTALLMENT_AMOUNT) {
+                    $perMonthAmount = self::MIN_INSTALLMENT_AMOUNT;
+                    $numberOfMonths = ceil($amount / $perMonthAmount);
+                }
+                
+                $result['deduction_type'] = 'installment';
+                $result['number_of_months'] = $numberOfMonths;
+                $result['deduction_per_month'] = $perMonthAmount;
+                $result['message'] = "Amount of KES " . number_format($amount, 2) . 
+                                     " will be deducted in " . $numberOfMonths . 
+                                     " installments of KES " . number_format($perMonthAmount, 2) . 
+                                     " per month.";
+            } else {
+                $result['deduction_type'] = 'single';
+                $result['number_of_months'] = 1;
+                $result['deduction_per_month'] = $amount;
+                $result['message'] = "Amount will be deducted as a single payment.";
+            }
+            
+            return $result;
+            
         } catch (Exception $e) {
-            Log::error('Error getting employee deduction summary: ' . $e->getMessage(), [
-                'employee_id' => $employeeId,
-                'trace' => $e->getTraceAsString()
+            Log::error('Error processing deduction rules', [
+                'amount' => $amount,
+                'employee_id' => $employee->id ?? null,
+                'error' => $e->getMessage()
             ]);
             
             return [
-                'total_pending' => 0,
-                'active_installments' => 0,
-                'next_due_amount' => 0,
-                'next_due_date' => null,
-                'error' => $e->getMessage()
+                'requires_dismissal' => false,
+                'deduction_type' => 'single',
+                'number_of_months' => 1,
+                'deduction_per_month' => $amount,
+                'message' => 'Deduction processed with default rules due to system error.'
             ];
         }
     }
+    
+    public function canAddDeduction($employeeId, $newDeductionAmount)
+    {
+        try {
+            $currentTotal = $this->getEmployeePendingBalance($employeeId);
+            $totalAfterAdd = $currentTotal + $newDeductionAmount;
+            
+            $result = [
+                'can_add' => $totalAfterAdd <= self::MAX_CUMULATIVE_DEDUCTION_AMOUNT,
+                'current_balance' => $currentTotal,
+                'new_amount' => $newDeductionAmount,
+                'total_after_add' => $totalAfterAdd,
+                'max_allowed' => self::MAX_CUMULATIVE_DEDUCTION_AMOUNT,
+                'remaining_capacity' => max(0, self::MAX_CUMULATIVE_DEDUCTION_AMOUNT - $currentTotal),
+                'requires_dismissal' => $totalAfterAdd > self::MAX_CUMULATIVE_DEDUCTION_AMOUNT
+            ];
+            
+            if ($result['requires_dismissal']) {
+                $result['message'] = "Adding this deduction would exceed the maximum cumulative limit of KES " . 
+                                     number_format(self::MAX_CUMULATIVE_DEDUCTION_AMOUNT, 2) . 
+                                     ". Current balance: KES " . number_format($currentTotal, 2) . 
+                                     ". This requires immediate HR review.";
+            } else {
+                $result['message'] = "Deduction can be added. Remaining capacity: KES " . 
+                                     number_format($result['remaining_capacity'], 2);
+            }
+            
+            return $result;
+            
+        } catch (Exception $e) {
+            Log::error('Error checking deduction capacity', [
+                'employee_id' => $employeeId,
+                'amount' => $newDeductionAmount,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'can_add' => false,
+                'error' => true,
+                'message' => 'Unable to verify deduction capacity: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    public function getEmployeePendingBalance($employeeId)
+    {
+        try {
+            $pendingDeductions = SalaryDeduction::where('employee_id', $employeeId)
+                ->whereIn('status', ['pending', 'applied', 'pending_dismissal'])
+                ->get();
+            
+            $total = 0;
+            
+            foreach ($pendingDeductions as $deduction) {
+                if ($deduction->number_of_installments > 1) {
+                    $paidInstallments = $deduction->schedule()
+                        ->where('status', 'paid')
+                        ->count();
+                    
+                    $remainingInstallments = $deduction->number_of_installments - $paidInstallments;
+                    $total += $remainingInstallments * $deduction->installment_amount;
+                } else {
+                    $total += $deduction->amount;
+                }
+            }
+            
+            return $total;
+            
+        } catch (Exception $e) {
+            Log::error('Error calculating employee pending balance', [
+                'employee_id' => $employeeId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return 0;
+        }
+    }
+    
+    public function calculateInstallmentSchedule($deductionId)
+    {
+        try {
+            $deduction = SalaryDeduction::findOrFail($deductionId);
+            
+            if ($deduction->number_of_installments <= 1) {
+                return [];
+            }
+            
+            $schedule = [];
+            $startDate = now()->startOfMonth();
+            
+            for ($i = 1; $i <= $deduction->number_of_installments; $i++) {
+                $dueDate = $startDate->copy()->addMonths($i - 1);
+                
+                $schedule[] = [
+                    'deduction_id' => $deduction->id,
+                    'installment_number' => $i,
+                    'total_installments' => $deduction->number_of_installments,
+                    'amount' => $deduction->installment_amount,
+                    'scheduled_date' => $dueDate,
+                    'status' => 'pending',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+            }
+            
+            return $schedule;
+            
+        } catch (Exception $e) {
+            Log::error('Error calculating installment schedule', [
+                'deduction_id' => $deductionId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [];
+        }
+    }
+
+    public static function getConstants()
+    {
+        return [
+            'MAX_DEDUCTION_AMOUNT' => self::MAX_DEDUCTION_AMOUNT,
+            'MAX_CUMULATIVE_DEDUCTION_AMOUNT' => self::MAX_CUMULATIVE_DEDUCTION_AMOUNT,
+            'INSTALLMENT_THRESHOLD' => self::INSTALLMENT_THRESHOLD,
+            'MAX_INSTALLMENTS' => self::MAX_INSTALLMENTS,
+            'MIN_INSTALLMENT_AMOUNT' => self::MIN_INSTALLMENT_AMOUNT,
+            'DISMISSAL_THRESHOLD' => self::DISMISSAL_THRESHOLD,
+        ];
+    }
+
+    
 }
