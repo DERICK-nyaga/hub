@@ -6,11 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Station;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\support\Facades\Schema;
+use App\Traits\ConditionalSoftDeletes;
+// use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Employee extends Model
 {
-    use HasFactory;
+    use HasFactory, ConditionalSoftDeletes;
+    // use SoftDeletes;
 
+    protected $dates = ['dismissed_at'];
+    protected $casts = ['dismissed_at' => 'datetime'];
     // protected $primaryKey = 'employee_id';
     protected $fillable = [
         'first_name',
@@ -29,32 +35,40 @@ class Employee extends Model
         'leave_start_date',
         'leave_end_date',
     ];
+    
+    public function newQueryWithoutScopes()
+    {
+        $query = parent::newQueryWithoutScopes();
+        
+        if (Schema::hasColumn('employees', 'deleted_at')) {
+            return $query;
+        }
+        
+        return $query;
+    }
 
     protected static function boot()
     {
         parent::boot();
-        
-        // When an employee is created
+        static::bootConditionalSoftDeletes();
+
         static::created(function ($employee) {
             $employee->syncToSalaryTable();
         });
         
-        // When an employee is updated
         static::updated(function ($employee) {
             $employee->syncToSalaryTable();
         });
         
-        // When an employee is deleted
         static::deleted(function ($employee) {
             $employee->removeFromSalaryTable();
         });
     }
     
-    // Sync to salary_employees table
     public function syncToSalaryTable()
     {
         \App\Models\SalaryEmployee::updateOrCreate(
-            ['phone' => $this->phone], // Match by phone number
+            ['phone' => $this->phone], 
             [
                 'name' => $this->full_name,
                 'phone' => $this->phone,
@@ -68,7 +82,6 @@ class Employee extends Model
         );
     }
     
-    // Remove from salary_employees when employee is deleted
     public function removeFromSalaryTable()
     {
         \App\Models\SalaryEmployee::where('phone', $this->phone)->delete();
@@ -114,53 +127,32 @@ class Employee extends Model
     {
         return $this->first_name . ' ' . $this->last_name;
     }
-        /**
-     * Scope a query to only include active employees.
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('status', 'active');
-    }
 
-    /**
-     * Scope a query to only include employees on leave.
-     */
     public function scopeOnLeave($query)
     {
         return $query->where('status', 'on_leave');
     }
 
-    /**
-     * Scope a query to only include terminated employees.
-     */
     public function scopeTerminated($query)
     {
         return $query->where('status', 'terminated');
     }
 
-    /**
-     * Check if employee is currently active.
-     */
     public function getIsActiveAttribute(): bool
     {
         return $this->status === 'active';
     }
 
-    /**
-     * Check if employee is currently on leave.
-     */
     public function getIsOnLeaveAttribute(): bool
     {
         return $this->status === 'on_leave';
     }
 
-    /**
-     * Check if employee is terminated.
-     */
     public function getIsTerminatedAttribute(): bool
     {
         return $this->status === 'terminated';
     }
+
     public function updateBalance()
     {
         $balance = $this->deductionTransactions()->sum('amount');
@@ -173,9 +165,74 @@ class Employee extends Model
         return $balance;
     }
 
-    // public function updateDebtBalance()
-    // {
-    //     $this->debt_balance = $this->deductions()->sum('amount');
-    //     $this->save();
-    // }
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active')
+                     ->whereNull('dismissed_at');
+    }
+    
+    public function scopeNotDismissed($query)
+    {
+        return $query->whereNull('dismissed_at');
+    }
+    
+    public function terminationLogs()
+    {
+        return $this->hasMany(TerminationLog::class);
+    }
+    
+    public function getIsDismissedAttribute()
+    {
+        return !is_null($this->dismissed_at) || $this->status === 'terminated';
+    }
+
+    public function latestTerminationLog(): HasOne
+    {
+        return $this->hasOne(TerminationLog::class)->latestOfMany();
+    }
+
+    public function activeTerminationLog(): HasOne
+    {
+        return $this->hasOne(TerminationLog::class)
+            ->where('is_reversed', false)
+            ->latestOfMany();
+    }
+
+    public function dismissedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'dismissed_by');
+    }
+
+    public function salaryEmployee(): HasOne
+    {
+        return $this->hasOne(SalaryEmployee::class);
+    }
+
+    public function profile(): HasOne
+    {
+        return $this->hasOne(EmployeeProfile::class);
+    }
+
+    public function stations()
+    {
+        return $this->belongsToMany(Station::class, 'employee_station', 'employee_id', 'station_id')
+                    ->withPivot('deleted_at', 'assigned_at', 'assigned_by')
+                    ->whereNull('employee_station.deleted_at');
+    }
+
+    public function allStations()
+    {
+        return $this->belongsToMany(Station::class, 'employee_station', 'employee_id', 'station_id')
+                    ->withPivot('deleted_at', 'assigned_at', 'assigned_by');
+    }
+
+    public function scopeForReports($query)
+    {
+        return $query->withTrashed();
+    }
+
+    public function scopeForTransactions($query)
+    {
+        return $query->whereNull('dismissed_at')->where('status', 'active');
+    }
 }
