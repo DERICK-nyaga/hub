@@ -59,25 +59,12 @@ class DeductionTransaction extends Model
     {
         return $query->where('amount', '<', 0);
     }
-    /**
-     * Get the employee associated with the deduction.
-     */
-    // public function employee(): BelongsTo
-    // {
-    //     return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
-    // }
 
-    /**
-     * Get the station associated with the deduction.
-     */
     public function station(): BelongsTo
     {
         return $this->belongsTo(Station::class, 'station_id', 'station_id');
     }
 
-    /**
-     * Get the deduction type.
-     */
     public function deductionType(): BelongsTo
     {
         return $this->belongsTo(DeductionTransaction::class, 'deduction_type_id', 'deduction_type_id');
