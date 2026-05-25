@@ -48,27 +48,21 @@ class AirtimePayment extends Model
         });
     }
 
-    // Method to check and update status if expired
     public function updateStatusIfExpired()
     {
-        // If already expired, don't check again
         if ($this->status === 'expired') {
             return;
         }
 
-        // Check if expected expiry date has passed
         $expiryDate = Carbon::parse($this->expected_expiry);
         $today = Carbon::today();
 
         if ($today->gt($expiryDate)) {
             $this->status = 'expired';
 
-            // Don't save here to avoid infinite loop
-            // We'll save in the saving event
         }
     }
 
-    // Accessor to check if payment is expired
     public function getIsExpiredAttribute()
     {
         $expiryDate = Carbon::parse($this->expected_expiry);
@@ -76,7 +70,6 @@ class AirtimePayment extends Model
         return $today->gt($expiryDate);
     }
 
-    // Accessor to get days since expiry
     public function getDaysSinceExpiryAttribute()
     {
         if (!$this->is_expired) {
@@ -88,7 +81,6 @@ class AirtimePayment extends Model
         return $today->diffInDays($expiryDate);
     }
 
-    // Method to manually mark as expired
     public function markAsExpired()
     {
         $this->status = 'expired';
@@ -96,7 +88,6 @@ class AirtimePayment extends Model
         return $this;
     }
 
-    // Method to renew/update airtime
     public function renewAirtime($amount, $topupDate = null)
     {
         $topupDate = $topupDate ? Carbon::parse($topupDate) : Carbon::today();
@@ -112,19 +103,16 @@ class AirtimePayment extends Model
         return $this;
     }
 
-    // Scope for active payments
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
     }
 
-    // Scope for expired payments
     public function scopeExpired($query)
     {
         return $query->where('status', 'expired');
     }
 
-    // Scope for payments expiring soon (within 3 days)
     public function scopeExpiringSoon($query)
     {
         $today = Carbon::today();
@@ -139,42 +127,40 @@ class AirtimePayment extends Model
         return $this->belongsTo(Station::class, 'station_id');
     }
 
-    // In AirtimePayment model
-public function isExpiringSoon()
-{
-    return $this->status === 'active' &&
-           $this->expected_expiry &&
-           $this->expected_expiry->between(now(), now()->addDays(3));
-}
-
-public function daysUntilExpiry()
-{
-    if (!$this->expected_expiry || !$this->status === 'active') {
-        return null;
+    public function isExpiringSoon()
+    {
+        return $this->status === 'active' &&
+            $this->expected_expiry &&
+            $this->expected_expiry->between(now(), now()->addDays(3));
     }
-    return now()->diffInDays($this->expected_expiry, false);
-}
 
-// In InternetPayment model
-public function isDueSoon()
-{
-    return $this->status === 'pending' &&
-           $this->due_date &&
-           $this->due_date->between(now(), now()->addDays(3));
-}
-
-public function isOverdue()
-{
-    return $this->status === 'pending' &&
-           $this->due_date &&
-           $this->due_date->lt(now());
-}
-
-public function daysUntilDue()
-{
-    if (!$this->due_date || $this->status !== 'pending') {
-        return null;
+    public function daysUntilExpiry()
+    {
+        if (!$this->expected_expiry || !$this->status === 'active') {
+            return null;
+        }
+        return now()->diffInDays($this->expected_expiry, false);
     }
-    return now()->diffInDays($this->due_date, false);
-}
+
+    public function isDueSoon()
+    {
+        return $this->status === 'pending' &&
+            $this->due_date &&
+            $this->due_date->between(now(), now()->addDays(3));
+    }
+
+    public function isOverdue()
+    {
+        return $this->status === 'pending' &&
+            $this->due_date &&
+            $this->due_date->lt(now());
+    }
+
+    public function daysUntilDue()
+    {
+        if (!$this->due_date || $this->status !== 'pending') {
+            return null;
+        }
+        return now()->diffInDays($this->due_date, false);
+    }
 }
