@@ -62,7 +62,7 @@
       }
     }
 
-    /* layout utilities (mirror original flex structure) */
+    /* layout utilities*/
     .flex {
       display: flex;
     }
